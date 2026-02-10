@@ -4,14 +4,14 @@
 
 ## Tech Stack
 
-| 영역 | 기술 |
-|---|---|
-| Framework | React Native 0.81 + Expo SDK 54 |
-| Routing | Expo Router v6 (file-based) |
-| Language | TypeScript (strict mode) |
-| Server State | TanStack React Query |
-| Animation | react-native-reanimated |
-| Gesture | react-native-gesture-handler |
+| 영역         | 기술                            |
+| ------------ | ------------------------------- |
+| Framework    | React Native 0.81 + Expo SDK 54 |
+| Routing      | Expo Router v6 (file-based)     |
+| Language     | TypeScript (strict mode)        |
+| Server State | TanStack React Query            |
+| Animation    | react-native-reanimated         |
+| Gesture      | react-native-gesture-handler    |
 
 ## Getting Started
 
@@ -85,17 +85,17 @@ utils/                # 유틸리티 함수
 #4 feat : 로그인 기능 구현
 ```
 
-| 태그 | 설명 |
-|---|---|
-| `feat` | 새로운 기능 추가 |
-| `fix` | 버그 수정 또는 typo |
-| `refactor` | 리팩토링 |
-| `comment` | 주석 추가 및 변경 |
-| `style` | 코드 포맷팅, 세미콜론 누락 (코드 변경 없음) |
-| `test` | 테스트 코드 추가/수정/삭제 |
-| `chore` | 빌드 스크립트, assets, 패키지 매니저 등 기타 |
-| `rename` | 파일/폴더명 수정 또는 이동 |
-| `remove` | 파일 삭제만 수행 |
+| 태그       | 설명                                         |
+| ---------- | -------------------------------------------- |
+| `feat`     | 새로운 기능 추가                             |
+| `fix`      | 버그 수정 또는 typo                          |
+| `refactor` | 리팩토링                                     |
+| `comment`  | 주석 추가 및 변경                            |
+| `style`    | 코드 포맷팅, 세미콜론 누락 (코드 변경 없음)  |
+| `test`     | 테스트 코드 추가/수정/삭제                   |
+| `chore`    | 빌드 스크립트, assets, 패키지 매니저 등 기타 |
+| `rename`   | 파일/폴더명 수정 또는 이동                   |
+| `remove`   | 파일 삭제만 수행                             |
 
 #### Issue
 
@@ -103,12 +103,15 @@ GitHub Issue 템플릿 사용:
 
 ```markdown
 ## Description
+
 어떤 작업에 관한 이슈인가요?
 
 ## Todo
+
 - [ ] todo
 
 ## ETC
+
 기타 사항
 ```
 
@@ -122,17 +125,17 @@ GitHub Issue 템플릿 사용:
 
 ### Naming
 
-| 대상 | 규칙 | 예시 |
-|---|---|---|
-| 컴포넌트 파일 | PascalCase | `TripCard.tsx`, `ShutterButton.tsx` |
-| 기타 파일 | camelCase | `useCamera.ts`, `tripService.ts` |
-| 디렉토리 | camelCase / 라우트 규칙 | `hooks/`, `components/` |
-| 컴포넌트명 | PascalCase | `TripCard` |
-| 훅 | camelCase + `use` 접두어 | `useCamera`, `useTripList` |
-| 변수 / 함수 | camelCase | `tripData`, `handleSubmit` |
-| 타입 / 인터페이스 | PascalCase | `Trip`, `UserProfile` |
-| Enum 타입 | PascalCase | `TripStatus` |
-| 상수 | UPPER_SNAKE_CASE | `MAX_PHOTOS_PER_DAY` |
+| 대상              | 규칙                     | 예시                                |
+| ----------------- | ------------------------ | ----------------------------------- |
+| 컴포넌트 파일     | PascalCase               | `TripCard.tsx`, `ShutterButton.tsx` |
+| 기타 파일         | camelCase                | `useCamera.ts`, `tripService.ts`    |
+| 디렉토리          | camelCase / 라우트 규칙  | `hooks/`, `components/`             |
+| 컴포넌트명        | PascalCase               | `TripCard`                          |
+| 훅                | camelCase + `use` 접두어 | `useCamera`, `useTripList`          |
+| 변수 / 함수       | camelCase                | `tripData`, `handleSubmit`          |
+| 타입 / 인터페이스 | PascalCase               | `Trip`, `UserProfile`               |
+| Enum 타입         | PascalCase               | `TripStatus`                        |
+| 상수              | UPPER_SNAKE_CASE         | `MAX_PHOTOS_PER_DAY`                |
 
 ### Imports
 
@@ -185,10 +188,10 @@ const styles = StyleSheet.create({
 
 ### State Management
 
-| 종류 | 도구 |
-|---|---|
-| 서버 상태 | TanStack React Query |
-| 로컬 UI 상태 | useState / useReducer |
+| 종류                 | 도구                       |
+| -------------------- | -------------------------- |
+| 서버 상태            | TanStack React Query       |
+| 로컬 UI 상태         | useState / useReducer      |
 | 전역 클라이언트 상태 | React Context (최소한으로) |
 
 ---
@@ -201,13 +204,13 @@ const styles = StyleSheet.create({
 
 ### Colors
 
-| 이름 | HEX | 용도 |
-|---|---|---|
-| `ink` | `#1a1a1a` | 주요 텍스트, 다크 배경 |
-| `navy` | `#335270` | 포인트, 액센트 |
-| `cream` | `#e2dfda` | 배경, 서브 |
-| `cloud` | `#f0f0f0` | 밝은 배경, 구분선 |
-| `red` | `#ea4335` | 경고, 강조 |
+| 이름    | HEX       |
+| ------- | --------- |
+| `ink`   | `#1a1a1a` |
+| `navy`  | `#335270` |
+| `cream` | `#e2dfda` |
+| `cloud` | `#f0f0f0` |
+| `red`   | `#ea4335` |
 
 - 하드코딩 금지 — 반드시 `@/constants`에서 import하여 사용
 - 컬러 weight 변형은 `constants/colors.ts`에서 관리
