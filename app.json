@@ -38,6 +38,29 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/MonoplexKR-Thin.ttf",
+            "./assets/fonts/MonoplexKR-ThinItalic.ttf",
+            "./assets/fonts/MonoplexKR-ExtraLight.ttf",
+            "./assets/fonts/MonoplexKR-ExtraLightItalic.ttf",
+            "./assets/fonts/MonoplexKR-Light.ttf",
+            "./assets/fonts/MonoplexKR-LightItalic.ttf",
+            "./assets/fonts/MonoplexKR-Regular.ttf",
+            "./assets/fonts/MonoplexKR-Italic.ttf",
+            "./assets/fonts/MonoplexKR-Text.ttf",
+            "./assets/fonts/MonoplexKR-TextItalic.ttf",
+            "./assets/fonts/MonoplexKR-Medium.ttf",
+            "./assets/fonts/MonoplexKR-MediumItalic.ttf",
+            "./assets/fonts/MonoplexKR-SemiBold.ttf",
+            "./assets/fonts/MonoplexKR-SemiBoldItalic.ttf",
+            "./assets/fonts/MonoplexKR-Bold.ttf",
+            "./assets/fonts/MonoplexKR-BoldItalic.ttf"
+          ]
+        }
       ]
     ],
     "experiments": {

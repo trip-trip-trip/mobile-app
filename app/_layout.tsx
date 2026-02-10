@@ -1,24 +1,39 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useEffect } from "react";
+import { Stack } from "expo-router";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [fontsLoaded, fontError] = useFonts({
+    "MonoplexKR-Thin": require("../assets/fonts/MonoplexKR-Thin.ttf"),
+    "MonoplexKR-ThinItalic": require("../assets/fonts/MonoplexKR-ThinItalic.ttf"),
+    "MonoplexKR-ExtraLight": require("../assets/fonts/MonoplexKR-ExtraLight.ttf"),
+    "MonoplexKR-ExtraLightItalic": require("../assets/fonts/MonoplexKR-ExtraLightItalic.ttf"),
+    "MonoplexKR-Light": require("../assets/fonts/MonoplexKR-Light.ttf"),
+    "MonoplexKR-LightItalic": require("../assets/fonts/MonoplexKR-LightItalic.ttf"),
+    "MonoplexKR-Regular": require("../assets/fonts/MonoplexKR-Regular.ttf"),
+    "MonoplexKR-Italic": require("../assets/fonts/MonoplexKR-Italic.ttf"),
+    "MonoplexKR-Text": require("../assets/fonts/MonoplexKR-Text.ttf"),
+    "MonoplexKR-TextItalic": require("../assets/fonts/MonoplexKR-TextItalic.ttf"),
+    "MonoplexKR-Medium": require("../assets/fonts/MonoplexKR-Medium.ttf"),
+    "MonoplexKR-MediumItalic": require("../assets/fonts/MonoplexKR-MediumItalic.ttf"),
+    "MonoplexKR-SemiBold": require("../assets/fonts/MonoplexKR-SemiBold.ttf"),
+    "MonoplexKR-SemiBoldItalic": require("../assets/fonts/MonoplexKR-SemiBoldItalic.ttf"),
+    "MonoplexKR-Bold": require("../assets/fonts/MonoplexKR-Bold.ttf"),
+    "MonoplexKR-BoldItalic": require("../assets/fonts/MonoplexKR-BoldItalic.ttf"),
+  });
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  return <Stack />;
 }
