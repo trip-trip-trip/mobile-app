@@ -13,11 +13,11 @@ interface SettingScreenProps {}
 const SettingScreen = ({}: SettingScreenProps) => {
   return (
     <View
-      style={{ width: "100%", height: "100%", backgroundColor: colors.WHITE }}
+      style={{ width: "100%", height: "100%", backgroundColor: colors.CLOUD }}
     >
       <Header
         label="setting"
-        backgroundColor={colors.WHITE}
+        backgroundColor={colors.CLOUD}
         labelColor={colors.NAVY}
         leftIcon={<GoBackIcon />}
       />
