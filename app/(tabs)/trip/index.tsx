@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import { colors } from "@/constants";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -22,33 +22,195 @@ const CATEGORIES = {
 };
 
 const ALL_CITIES = [
+  // 해외 - 일본
   {
     id: 1,
     title: "도쿄",
-    description: "도쿄, 하코네...",
+    description: "도쿄, 하코네, 가마쿠라",
     category: "해외",
     subCategory: "일본",
   },
   {
     id: 2,
     title: "오사카",
-    description: "오사카, 교토...",
+    description: "오사카, 교토, 나라",
     category: "해외",
     subCategory: "일본",
   },
   {
-    id: 5,
+    id: 3,
+    title: "후쿠오카",
+    description: "후쿠오카, 벳푸, 유후인",
+    category: "해외",
+    subCategory: "일본",
+  },
+  {
+    id: 4,
+    title: "홋카이도",
+    description: "삿포로, 오타루, 후라노",
+    category: "해외",
+    subCategory: "일본",
+  },
+
+  // 해외 - 동남아시아
+  {
+    id: 10,
+    title: "방콕",
+    description: "방콕, 파타야, 후아힌",
+    category: "해외",
+    subCategory: "동남아시아",
+  },
+  {
+    id: 11,
+    title: "푸켓",
+    description: "푸켓, 카오락, 피피섬",
+    category: "해외",
+    subCategory: "동남아시아",
+  },
+  {
+    id: 12,
+    title: "다낭",
+    description: "다낭, 호이안, 후에",
+    category: "해외",
+    subCategory: "동남아시아",
+  },
+  {
+    id: 13,
+    title: "싱가포르",
+    description: "마리나베이, 센토사, 오차드",
+    category: "해외",
+    subCategory: "동남아시아",
+  },
+  {
+    id: 14,
+    title: "발리",
+    description: "우붓, 세미냑, 누사두아",
+    category: "해외",
+    subCategory: "동남아시아",
+  },
+
+  // 해외 - 유럽
+  {
+    id: 20,
+    title: "파리",
+    description: "에펠탑, 루브르, 몽마르트",
+    category: "해외",
+    subCategory: "유럽",
+  },
+  {
+    id: 21,
+    title: "런던",
+    description: "빅벤, 대영박물관, 타워브릿지",
+    category: "해외",
+    subCategory: "유럽",
+  },
+  {
+    id: 22,
+    title: "로마",
+    description: "콜로세움, 바티칸, 트레비분수",
+    category: "해외",
+    subCategory: "유럽",
+  },
+  {
+    id: 23,
+    title: "바르셀로나",
+    description: "사그라다파밀리아, 구엘공원, 람블라스",
+    category: "해외",
+    subCategory: "유럽",
+  },
+
+  // 해외 - 남태평양
+  {
+    id: 30,
+    title: "괌",
+    description: "투몬비치, 차모로빌리지, 연인의절벽",
+    category: "해외",
+    subCategory: "남태평양",
+  },
+  {
+    id: 31,
+    title: "사이판",
+    description: "마나가하섬, 그로토, 만세절벽",
+    category: "해외",
+    subCategory: "남태평양",
+  },
+  {
+    id: 32,
+    title: "하와이",
+    description: "와이키키, 다이아몬드헤드, 진주만",
+    category: "해외",
+    subCategory: "남태평양",
+  },
+
+  // 국내 - 서울
+  {
+    id: 40,
     title: "서울",
     description: "강남, 홍대, 성수",
     category: "국내",
     subCategory: "서울",
   },
   {
-    id: 6,
-    title: "제주",
-    description: "함덕, 협재, 서귀포",
+    id: 41,
+    title: "경복궁",
+    description: "종로, 북촌, 삼청동",
+    category: "국내",
+    subCategory: "서울",
+  },
+
+  // 국내 - 제주
+  {
+    id: 50,
+    title: "제주시",
+    description: "함덕, 월정리, 애월",
     category: "국내",
     subCategory: "제주",
+  },
+  {
+    id: 51,
+    title: "서귀포",
+    description: "중문, 협재, 성산일출봉",
+    category: "국내",
+    subCategory: "제주",
+  },
+
+  // 국내 - 부산
+  {
+    id: 60,
+    title: "부산",
+    description: "해운대, 광안리, 남포동",
+    category: "국내",
+    subCategory: "부산",
+  },
+  {
+    id: 61,
+    title: "기장",
+    description: "해동용궁사, 죽성성당, 일광해수욕장",
+    category: "국내",
+    subCategory: "부산",
+  },
+
+  // 국내 - 강원
+  {
+    id: 70,
+    title: "강릉",
+    description: "경포대, 정동진, 안목해변",
+    category: "국내",
+    subCategory: "강원",
+  },
+  {
+    id: 71,
+    title: "속초",
+    description: "설악산, 속초해수욕장, 아바이마을",
+    category: "국내",
+    subCategory: "강원",
+  },
+  {
+    id: 72,
+    title: "평창",
+    description: "대관령, 양떼목장, 알펜시아",
+    category: "국내",
+    subCategory: "강원",
   },
 ];
 
@@ -187,7 +349,11 @@ export default function TripsIndex() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.CLOUD },
-  container: { flex: 1, backgroundColor: colors.CLOUD },
+  container: {
+    flex: 1,
+    backgroundColor: colors.CLOUD,
+    fontFamily: "MonoplexKR-Regular",
+  },
   headerTitleContainer: {
     paddingHorizontal: 22,
     paddingVertical: 20,
