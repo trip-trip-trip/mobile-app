@@ -1,8 +1,9 @@
 import FullButton from "@/components/FullButton";
 import Header from "@/components/Header";
 import GoBackIcon from "@/components/icons/GoBackIcon";
-import SettingActivate from "@/components/setting/SettingActivate";
-import SettingTimeslot from "@/components/setting/SettingTimeslot";
+import ProfileEdit from "@/components/setting/ProfileEdit";
+import SettingActivate from "@/components/setting/PushNotificationActivate";
+import SettingTimeslot from "@/components/setting/PushNotificationTimeslot";
 import { colors } from "@/constants/colors";
 import React from "react";
 import { StyleSheet, View } from "react-native";
@@ -22,6 +23,7 @@ const SettingScreen = ({}: SettingScreenProps) => {
         leftIcon={<GoBackIcon />}
       />
       <View style={styles.container}>
+        <ProfileEdit />
         <SettingActivate />
         <SettingTimeslot />
         <FullButton
