@@ -61,7 +61,8 @@
             "./assets/fonts/MonoplexKR-BoldItalic.ttf"
           ]
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
