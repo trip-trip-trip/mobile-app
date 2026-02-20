@@ -6,6 +6,8 @@ import SwitchCameraButton from "@/components/camera/SwitchCameraButton";
 import { BlurView } from "expo-blur";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
+import { Accelerometer, Gyroscope } from "expo-sensors";
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   Image,
@@ -32,6 +34,8 @@ const CameraScreen = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [facing, setFacing] = useState<"front" | "back">("back");
 
+  const [isCameraReady, setIsCameraReady] = useState(false);
+
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const [isBlurDetected, setIsBlurDetected] = useState(false);
 
@@ -46,22 +50,79 @@ const CameraScreen = () => {
     return <View style={{ flex: 1, backgroundColor: "black" }} />;
   }
 
+  const measureShakeWindow = async (): Promise<number> => {
+    return new Promise((resolve) => {
+      const accelSamples: number[] = [];
+      const gyroSamples: number[] = [];
+
+      Accelerometer.setUpdateInterval(20);
+      Gyroscope.setUpdateInterval(20);
+
+      const accelSub = Accelerometer.addListener((data) => {
+        const magnitude = Math.sqrt(
+          data.x * data.x + data.y * data.y + data.z * data.z,
+        );
+        accelSamples.push(Math.abs(magnitude - 1)); // 중력 제거
+      });
+
+      const gyroSub = Gyroscope.addListener((data) => {
+        const magnitude = Math.sqrt(
+          data.x * data.x + data.y * data.y + data.z * data.z,
+        );
+        gyroSamples.push(magnitude);
+      });
+
+      setTimeout(() => {
+        accelSub.remove();
+        gyroSub.remove();
+
+        const accelAvg =
+          accelSamples.reduce((a, b) => a + b, 0) / (accelSamples.length || 1);
+
+        const gyroAvg =
+          gyroSamples.reduce((a, b) => a + b, 0) / (gyroSamples.length || 1);
+
+        const shakeScore = accelAvg * 1.3 + gyroAvg * 0.8;
+
+        resolve(shakeScore);
+      }, 350);
+    });
+  };
+
   const handleShutterPress = async () => {
-    if (!cameraRef.current) return;
-
-    if (mode === "photo") {
-      const photo = await cameraRef.current.takePictureAsync();
-      setCapturedUri(photo.uri);
-
-      // 임시 blur 감지 (랜덤)
-      setIsBlurDetected(Math.random() < 0.3);
+    console.log("Shutter Pressed. Ready:", isCameraReady, "Mode:", mode);
+    // 1. 기본적인 체크
+    if (!cameraRef.current || !isCameraReady) {
+      console.log("Camera not ready yet");
+      return;
     }
 
-    if (mode === "video") {
-      if (isRecording) return;
-      setIsRecording(true);
+    if (mode === "photo") {
       try {
-        await cameraRef.current.recordAsync({ maxDuration: 3 });
+        // 사진 촬영
+        const shakePromise = measureShakeWindow();
+        const photo = await cameraRef.current.takePictureAsync();
+        const shakeScore = await shakePromise;
+        setIsBlurDetected(shakeScore > 0.25);
+        setCapturedUri(photo.uri);
+      } catch (error) {
+        console.error("Photo capture error:", error);
+      }
+    } else if (mode === "video") {
+      if (isRecording || !isCameraReady) return;
+
+      try {
+        setIsRecording(true);
+
+        const video = await cameraRef.current.recordAsync({
+          maxDuration: 3,
+        });
+
+        if (video?.uri) {
+          setCapturedUri(video.uri);
+        }
+      } catch (error) {
+        console.error("Video recording error:", error);
       } finally {
         setIsRecording(false);
       }
@@ -78,14 +139,12 @@ const CameraScreen = () => {
           <View style={styles.resultWrapper}>
             <Image source={{ uri: capturedUri }} style={styles.resultImage} />
 
-            {/* Blur 효과 */}
             <BlurView
               intensity={80}
               tint="dark"
               style={StyleSheet.absoluteFill}
             />
 
-            {/* 흔들림 경고 */}
             {isBlurDetected && (
               <View style={styles.blurWarning}>
                 <Text style={styles.warningText}>사진이 약간 흔들렸어요</Text>
@@ -95,14 +154,12 @@ const CameraScreen = () => {
               </View>
             )}
 
-            {/* 포토프레임 중앙 */}
             <Image
               source={require("@/assets/camera/photoframe.png")}
               style={styles.photoFrame}
               resizeMode="contain"
             />
 
-            {/* 완료 텍스트 */}
             <View style={styles.resultTextWrapper}>
               <Text style={styles.resultTitle}>촬영 완료!</Text>
               <Text style={styles.resultSub}>
@@ -112,7 +169,17 @@ const CameraScreen = () => {
           </View>
         ) : (
           <>
-            <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing={facing}
+              mode={mode as any}
+              onCameraReady={() => {
+                console.log("CAMERA READY");
+                setIsCameraReady(true);
+              }}
+            />
+
             <ShotIndicator current={current} />
           </>
         )}
@@ -121,10 +188,8 @@ const CameraScreen = () => {
       {/* BOTTOM BAR */}
       <View style={styles.bottomBar}>
         {capturedUri ? (
-          /* ===== 촬영 후: Comment 영역만 ===== */
           <View style={styles.commentWrapper}>
             <Text style={styles.commentLabel}>COMMENT</Text>
-
             <TextInput
               style={styles.commentInput}
               placeholder="댓글을 입력하세요"
@@ -132,9 +197,7 @@ const CameraScreen = () => {
             />
           </View>
         ) : (
-          /* ===== 촬영 전 기존 디자인 유지 ===== */
           <>
-            {/* RED BAR + LINES */}
             <View style={styles.topRow}>
               <View style={styles.centerIndicators}>
                 <RedBar width={69} height={6} />
@@ -150,24 +213,20 @@ const CameraScreen = () => {
               </Pressable>
             </View>
 
-            {/* PicProgress */}
             {mode === "photo" && (
               <View style={styles.progressWrapper}>
                 <PicProgress current={current} />
               </View>
             )}
 
-            {/* White Panel */}
             <View style={styles.whitePanelWrapper}>
               <WhitePanel width={350} height={193.5} />
             </View>
 
-            {/* Mode + Shutter */}
             <View style={styles.centerStack}>
               <View style={styles.modeCenter}>
                 {(["photo", "video"] as const).map((item) => {
                   const isActive = mode === item;
-
                   return (
                     <Pressable
                       key={item}
