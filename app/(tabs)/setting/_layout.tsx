@@ -1,3 +1,4 @@
+import { colors } from "@/constants/colors";
 import { Stack } from "expo-router";
 
 export default function SettingScreen() {
@@ -6,7 +7,7 @@ export default function SettingScreen() {
       screenOptions={{
         headerShown: false,
         contentStyle: {
-          backgroundColor: "white",
+          backgroundColor: colors.CLOUD,
         },
       }}
     >
