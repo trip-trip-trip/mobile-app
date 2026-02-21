@@ -1,9 +1,14 @@
 import { colors } from "@/constants/colors";
 import { StyleSheet, Text, View } from "react-native";
 import CameraSvg from "./../../assets/icons/camera.svg";
-import { TicketLabel } from "./ticketLabel";
+import { TicketLabel } from "./TicketLabel";
+import { TripInfo } from "./galleryType";
 
-export const Ticket = () => {
+type TicketProps = {
+  data: TripInfo;
+};
+
+export const Ticket = ({ data }: TicketProps) => {
   return (
     <View style={styles.ticket}>
       <View style={styles.ticketRight}>
