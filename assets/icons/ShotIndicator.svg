@@ -1,0 +1,25 @@
+<svg width="86" height="27" viewBox="0 0 86 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="0.5" y="0.5" width="85" height="26" rx="13" fill="#1A1A1A" stroke="black"/>
+<mask id="mask0_404_628" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="1" width="86" height="25">
+<rect y="1" width="86" height="25" rx="12.5" fill="#1A1A1A"/>
+</mask>
+<g mask="url(#mask0_404_628)">
+<g opacity="0.1">
+<circle cx="79" cy="13.5408" r="14" fill="url(#paint0_linear_404_628)"/>
+</g>
+<g opacity="0.1">
+<circle cx="7" cy="13.5408" r="14" fill="url(#paint1_linear_404_628)"/>
+</g>
+<circle cx="43" cy="13.5408" r="14" fill="#EA4335"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_404_628" x1="79" y1="-0.459229" x2="79" y2="27.5408" gradientUnits="userSpaceOnUse">
+<stop stop-color="#BEBEBE"/>
+<stop offset="1" stop-color="#F0F0F0"/>
+</linearGradient>
+<linearGradient id="paint1_linear_404_628" x1="7" y1="-0.459229" x2="7" y2="27.5408" gradientUnits="userSpaceOnUse">
+<stop stop-color="#BEBEBE"/>
+<stop offset="1" stop-color="#F0F0F0"/>
+</linearGradient>
+</defs>
+</svg>
