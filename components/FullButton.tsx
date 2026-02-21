@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
   },
+
   kakao: {
     backgroundColor: "#FEE502",
     borderRadius: 30,
