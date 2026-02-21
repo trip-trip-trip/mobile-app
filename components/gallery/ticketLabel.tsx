@@ -1,3 +1,4 @@
+import { colors } from "@/constants/colors";
 import { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -25,13 +26,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 12,
-    color: "#335270",
+    color: colors.NAVY,
     fontFamily: "Monoplex KR",
     fontWeight: 700,
   },
   contentText: {
     fontSize: 16,
-    color: "#335270",
+    color: colors.NAVY,
     fontWeight: 400,
     fontFamily: "Monoplex KR",
   },
