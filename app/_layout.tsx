@@ -4,10 +4,12 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import queryClient from "@/api/queryClient";
+import useDeviceToken from "@/hooks/useDeviceToken";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  useDeviceToken(); // 앱 시작 시 FCM 디바이스 토큰 콘솔 출력
   const [fontsLoaded, fontError] = useFonts({
     "MonoplexKR-Thin": require("../assets/fonts/MonoplexKR-Thin.ttf"),
     "MonoplexKR-ThinItalic": require("../assets/fonts/MonoplexKR-ThinItalic.ttf"),
