@@ -68,99 +68,9 @@ export default function Gallery() {
   const [completedTrips, setCompletedTrips] = useState<TripInfo[]>([]);
   // const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
   // 3. 활성 여행의 '정보' (제목, 날짜 등)를 담을 state
   // const [activeShotCount, setActiveShotCount] = useState(0);
   // const [tripData, setTripData] = useState({});
-
-  // 활성 여행 정보(여부) 조회
-  const fetchActive = async () => {
-    try {
-      const response = await fetch(`${API_URL}/trips/isActiveTrips`, {
-        method: "GET",
-        headers: {
-          "Content-type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`활성 여행 정보 조회 실패: ${response.status}`);
-      }
-
-      const data = await response.json();
-      // setActiveTripInfo(data.result.trip);
-      setHasActive(data.result.isOngoing);
-    } catch (error) {
-      console.error("Error fetching active trip data:", error);
-    }
-  };
-
-  // 전체 여행 정보(여부) 조회
-  const fetchTrips = async () => {
-    const response = await fetch(`${API_URL}/trips`, {
-      method: "GET",
-      headers: {
-        "Content-type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`전체 여행 정보 조회 실패: ${response.status}`);
-    }
-
-    const data: TripsResponse = await response.json();
-    const fetchedTrips = data.result ?? [];
-
-    const completedList: TripInfo[] = [];
-    const activeTrips: TripInfo[] = [];
-
-    fetchedTrips.forEach((item) => {
-      const trip = item.trip;
-
-      const tripData: TripInfo = {
-        id: trip.id,
-        placeName: trip.places[0] || "",
-        title: trip.title,
-        startDate: trip.startDate,
-        endDate: trip.endDate,
-        places: trip.places,
-        members: trip.participantAvatarUrls,
-        photoCount: trip.photoCount,
-        videoCount: trip.videoCount,
-        photos: trip.myPhotoUrls,
-        coverImage: trip.myPhotoUrls.length > 0 ? trip.myPhotoUrls[0] : null,
-      };
-
-      if (trip.endDate < todayDate) {
-        completedList.push(tripData);
-      } else {
-        activeTrips.push(tripData);
-      }
-    });
-
-    activeTrips.sort((a, b) => b.startDate.localeCompare(a.startDate));
-    const newActiveTrip = activeTrips.length > 0 ? activeTrips[0] : null;
-
-    // if (activeTrips.length > 0) {
-    //   newActiveTrip = activeTrips[0];
-    //   // 활성 여행 ID가 바뀌었으면 AuthContext의 activeTripId를 업데이트
-    //   if (newActiveTrip.id !== activeTripId) {
-    //     // setActiveTripId는 AuthContext에서 로컬스토리지까지 업데이트하는 함수입니다.
-    //     setActiveTripId(newActiveTrip.id);
-    //   }
-    // } else {
-    //   // 진행 중인 여행이 하나도 없다면 activeTripId를 초기화
-    //   if (activeTripId) {
-    //     setActiveTripId(null);
-    //   }
-    // }
-
-    setActiveTripInfo(newActiveTrip);
-    setCompletedTrips(completedList);
-  };
-
-  fetchActive();
 
   //테스트용 더미
   useEffect(() => {
@@ -266,7 +176,6 @@ const styles = StyleSheet.create({
     fontFamily: "Monoplex KR",
     fontWeight: 400,
   },
-  // TODO: 임시 버튼 스타일 — 실제 메인화면 구현 시 제거
   tempTripButton: {
     alignSelf: "flex-start",
     marginBottom: 16,
@@ -280,7 +189,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "MonoplexKR-Medium",
   },
-  // TODO END
 });
 
 export const MOCK_ACTIVE_TRIPS: TripInfo[] = [

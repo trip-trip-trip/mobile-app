@@ -1,5 +1,5 @@
 import { colors } from "@/constants/colors";
-import { TripInfo } from "@/types/GalleryType";
+import { TripInfo } from "@/types/gallery";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SharedProfiles } from "./SharedProfiles";
 
