@@ -3,7 +3,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 
 type Props = {
-  type: "fill" | "outlined";
+  type: "fill" | "outlined" | "kakao";
   label: string;
   icon?: React.ReactNode;
   onPress?: () => void;
@@ -15,14 +15,31 @@ const FullButton = ({ type, label, icon, onPress }: Props) => {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.container, isFill ? styles.fill : styles.outlined]}
+      style={[
+        styles.container,
+        isFill
+          ? styles.fill
+          : type === "outlined"
+            ? styles.outlined
+            : styles.kakao,
+      ]}
     >
+      {icon}
       <Text
-        style={[styles.label, { color: isFill ? colors.CREAM : colors.NAVY }]}
+        style={[
+          styles.label,
+          {
+            color:
+              type === "fill"
+                ? colors.CREAM
+                : type === "outlined"
+                  ? colors.NAVY
+                  : "#3C1E1E",
+          },
+        ]}
       >
         {label}
       </Text>
-      {icon}
     </Pressable>
   );
 };
@@ -45,12 +62,18 @@ const styles = StyleSheet.create({
   },
   outlined: {
     backgroundColor: "transparent",
-    borderWidth: 1,
     borderColor: colors.NAVY,
+    borderWidth: 1,
   },
   label: {
     fontFamily: "MonoplexKR-Regular",
     fontSize: 16,
     textAlign: "center",
+  },
+
+  kakao: {
+    backgroundColor: "#FEE502",
+    borderRadius: 30,
+    borderColor: "transparent",
   },
 });
