@@ -1,16 +1,22 @@
 import { colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import InputField from "../InputField";
 
-type Props = {};
+type Props = {
+  userId: string;
+  profileImgUri: string | null;
+  onUserIdChange: (value: string) => void;
+  onProfileImgChange: (uri: string) => void;
+};
 
-const ProfileEdit = ({}: Props) => {
-  const [profileImgUri, setProfileImgUri] = useState<string | null>(null);
-  const [nickname, setNickname] = useState("홍길동");
-
+const ProfileEdit = ({
+  userId,
+  profileImgUri,
+  onUserIdChange,
+  onProfileImgChange,
+}: Props) => {
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
@@ -20,7 +26,7 @@ const ProfileEdit = ({}: Props) => {
     });
 
     if (!result.canceled) {
-      setProfileImgUri(result.assets[0].uri);
+      onProfileImgChange(result.assets[0].uri);
     }
   };
 
@@ -37,10 +43,10 @@ const ProfileEdit = ({}: Props) => {
         )}
       </Pressable>
       <InputField
-        label="이름"
-        value={nickname}
-        onChangeText={setNickname}
-        placeholder="이름을 입력하세요"
+        label="아이디"
+        value={userId}
+        onChangeText={onUserIdChange}
+        placeholder="아이디를 입력하세요"
       />
     </View>
   );
