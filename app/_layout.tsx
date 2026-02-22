@@ -1,11 +1,37 @@
-import { useEffect } from "react";
-import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import queryClient from "@/api/queryClient";
+import useDeviceToken from "@/hooks/useDeviceToken";
+import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
+// 인증 상태에 따라 auth ↔ (tabs) 간 라우팅 가드
+function AuthGuard() {
+  const { isLoading, isAuthenticated } = useAuthContext();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === "auth";
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace("/auth");
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace("/(tabs)/gallery");
+    }
+  }, [isLoading, isAuthenticated, segments]);
+
+  return null;
+}
+
 export default function RootLayout() {
+  useDeviceToken();
   const [fontsLoaded, fontError] = useFonts({
     "MonoplexKR-Thin": require("../assets/fonts/MonoplexKR-Thin.ttf"),
     "MonoplexKR-ThinItalic": require("../assets/fonts/MonoplexKR-ThinItalic.ttf"),
@@ -26,9 +52,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
+    if (fontsLoaded || fontError) SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) {
@@ -36,11 +60,17 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen
-        name="(tabs)"
-        options={{ headerShown: false, navigationBarHidden: true }}
-      />
-    </Stack>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AuthGuard />
+        <Stack>
+          <Stack.Screen name="auth" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="(tabs)"
+            options={{ headerShown: false, navigationBarHidden: true }}
+          />
+        </Stack>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
