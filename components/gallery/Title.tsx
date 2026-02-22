@@ -20,9 +20,8 @@ const styles = StyleSheet.create({
   titleCont: {
     width: "100%",
     justifyContent: "center",
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.4,
     borderBottomColor: colors.NAVY,
-    borderStyle: "dashed",
     borderRadius: 1,
     marginBottom: 21,
   },

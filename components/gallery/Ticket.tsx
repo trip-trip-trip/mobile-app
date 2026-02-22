@@ -1,6 +1,7 @@
 import { colors } from "@/constants/colors";
 import { TripInfo } from "@/types/gallery";
-import { StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import CameraSvg from "./../../assets/icons/camera.svg";
 import { TicketLabel } from "./TicketLabel";
 
@@ -71,14 +72,17 @@ export const Ticket = ({ data }: TicketProps) => {
         style={{
           borderRightWidth: 4,
           borderRightColor: colors.NAVY,
-          borderStyle: "dashed",
+          borderStyle: "solid",
         }}
       />
 
-      <View style={styles.ticketLeft}>
+      <Pressable
+        onPress={() => router.push("/(tabs)/camera")}
+        style={styles.ticketLeft}
+      >
         <CameraSvg width={46} height={46} />
         <Text style={styles.contentText}>촬영하기</Text>
-      </View>
+      </Pressable>
     </View>
   );
 };
@@ -90,15 +94,6 @@ const styles = StyleSheet.create({
     fontWeight: 400,
     fontFamily: "Monoplex KR",
   },
-  titleCont: {
-    backgroundColor: "",
-    flex: 1,
-    justifyContent: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.NAVY,
-    borderStyle: "dashed",
-    marginBottom: 21,
-  },
   ticket: {
     flexDirection: "row",
     width: "100%",
@@ -109,17 +104,18 @@ const styles = StyleSheet.create({
     elevation: 8 /* Android용 */,
   },
   ticketLeft: {
-    width: "25%",
+    width: "27%",
     justifyContent: "center",
     alignItems: "center",
     alignSelf: "stretch",
     backgroundColor: colors.NAVY,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.NAVY,
-    borderStyle: "dashed",
+    // borderLeftWidth: 2.5,
+    gap: 4,
+    // borderLeftColor: colors.CREAM,
+    // borderStyle: "dashed",
   },
   ticketRight: {
-    width: "75%",
+    width: "73%",
     justifyContent: "center",
     backgroundColor: colors.CLOUD,
   },
