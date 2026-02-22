@@ -1,64 +1,84 @@
 import { colors } from "@/constants/colors";
-import React, { useState } from "react";
+import { SLOT_DISPLAY_ORDER, SLOT_LABEL_MAP } from "@/types/setting";
+import type { SlotCode } from "@/types/setting";
+import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
-type Props = {};
+type Props = {
+  isVisible: boolean;
+  selectedSlots: Set<string>;
+  onToggleSlot: (label: string, code: SlotCode) => void;
+};
 
-const SLOT_LIST = ["오전", "오후", "저녁", "새벽", "점심", "밤"];
+// 슬롯 섹션 최대 높이 (실제 콘텐츠보다 충분히 크게)
+const MAX_HEIGHT = 300;
 
-const SettingTimeslot = ({}: Props) => {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+const SettingTimeslot = ({ isVisible, selectedSlots, onToggleSlot }: Props) => {
+  const animatedMaxHeight = useSharedValue(0);
+  const animatedOpacity = useSharedValue(0);
 
-  const toggleSlot = (slot: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(slot)) {
-        next.delete(slot);
-      } else {
-        next.add(slot);
-      }
-      return next;
-    });
-  };
+  useEffect(() => {
+    if (isVisible) {
+      animatedMaxHeight.value = withTiming(MAX_HEIGHT, { duration: 250 });
+      animatedOpacity.value = withTiming(1, { duration: 250 });
+    } else {
+      animatedMaxHeight.value = withTiming(0, { duration: 250 });
+      animatedOpacity.value = withTiming(0, { duration: 200 });
+    }
+  }, [isVisible]);
+
+  const containerStyle = useAnimatedStyle(() => ({
+    maxHeight: animatedMaxHeight.value,
+    opacity: animatedOpacity.value,
+    overflow: "hidden",
+  }));
 
   return (
-    <View style={styles.container}>
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>알림 시간대 설정</Text>
-        <Text style={styles.subtitle}>선호하는 시간대를 선택해주세요</Text>
-      </View>
-      <View style={styles.optionBlock}>
-        {SLOT_LIST.map((slot) => {
-          const isSelected = selected.has(slot);
-          return (
-            <Pressable
-              key={slot}
-              onPress={() => toggleSlot(slot)}
-              style={[
-                styles.slot,
-                { backgroundColor: isSelected ? colors.NAVY : colors.CREAM },
-              ]}
-            >
-              <Text
+    <Animated.View style={containerStyle}>
+      <View style={styles.inner}>
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>알림 시간대 설정</Text>
+          <Text style={styles.subtitle}>선호하는 시간대를 선택해주세요</Text>
+        </View>
+        <View style={styles.optionBlock}>
+          {SLOT_DISPLAY_ORDER.map((label) => {
+            const code = SLOT_LABEL_MAP[label];
+            const isSelected = selectedSlots.has(label);
+            return (
+              <Pressable
+                key={label}
+                onPress={() => onToggleSlot(label, code)}
                 style={[
-                  styles.slotText,
-                  { color: isSelected ? colors.CREAM : colors.NAVY },
+                  styles.slot,
+                  { backgroundColor: isSelected ? colors.NAVY : colors.CREAM },
                 ]}
               >
-                {slot}
-              </Text>
-            </Pressable>
-          );
-        })}
+                <Text
+                  style={[
+                    styles.slotText,
+                    { color: isSelected ? colors.CREAM : colors.NAVY },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
 export default SettingTimeslot;
 
 const styles = StyleSheet.create({
-  container: {
+  inner: {
     gap: 20,
   },
   textContainer: {

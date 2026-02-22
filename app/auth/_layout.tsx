@@ -19,6 +19,10 @@ export default function AuthScreen() {
           navigationBarHidden: true,
         }}
       />
+      <Stack.Screen
+        name="home"
+        options={{ headerShown: false, navigationBarHidden: true }}
+      />
     </Stack>
   );
 }

@@ -1,28 +1,23 @@
-import { getSecureStore } from "@/utils/secureStore";
-import axios from "axios";
 import axiosInstance from "./axios";
+import type { AuthUser, TokenRes } from "@/types/auth";
 
-type RequestUser = {
-  // 뭔가 들어가야돼
-};
-
-async function postSignup(body: RequestUser) {
-  const { data } = await axiosInstance.post(`/auth/signup`, body);
-  return data;
+// POST /signup/complete — signup 토큰으로 회원가입 완료, access 토큰 반환
+async function completeSignup(
+  userId: string,
+  signupToken: string,
+): Promise<TokenRes> {
+  const { data } = await axiosInstance.post(
+    "/signup/complete",
+    { userId },
+    { headers: { Authorization: `Bearer ${signupToken}` } },
+  );
+  return data.result as TokenRes;
 }
 
-async function postLogin(body: RequestUser): Promise<{ accessToken: string }> {
-  const { data } = await axiosInstance.post(`/auth/google`, body);
-  return data;
+// GET /users/me — access 토큰으로 내 프로필 조회 (axios 공통 헤더 사용)
+async function getMyProfile(): Promise<AuthUser> {
+  const { data } = await axiosInstance.get("/users/me");
+  return data.result as AuthUser;
 }
 
-async function getMe() {
-  const accessToken = await getSecureStore("accessToken");
-  const { data } = await axiosInstance.get(`/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  return data;
-}
-export { postSignup, postLogin, getMe };
+export { completeSignup, getMyProfile };
