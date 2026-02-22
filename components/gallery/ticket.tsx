@@ -1,9 +1,29 @@
 import { colors } from "@/constants/colors";
+import { TripInfo } from "@/types/gallery";
 import { StyleSheet, Text, View } from "react-native";
 import CameraSvg from "./../../assets/icons/camera.svg";
-import { TicketLabel } from "./ticketLabel";
+import { TicketLabel } from "./TicketLabel";
 
-export const Ticket = () => {
+type TicketProps = {
+  data: TripInfo;
+};
+
+const formatDateRange = (start: string, end: string) => {
+  const baseOptions: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "2-digit",
+  };
+
+  const startStr = new Date(start).toLocaleDateString("en-US", baseOptions);
+  const endStr = new Date(end).toLocaleDateString("en-US", {
+    ...baseOptions,
+    year: "numeric",
+  });
+
+  return `${startStr} - ${endStr}`.toUpperCase();
+};
+
+export const Ticket = ({ data }: TicketProps) => {
   return (
     <View style={styles.ticket}>
       <View style={styles.ticketRight}>
@@ -12,22 +32,26 @@ export const Ticket = () => {
             fontSize: 12,
             color: colors.NAVY,
             fontFamily: "Monoplex KR",
-            fontWeight: 700,
+            fontWeight: "700",
             borderBottomWidth: 1,
             borderBottomColor: colors.NAVY,
             paddingVertical: 6,
             paddingHorizontal: 16,
           }}
         >
-          FEB 05 - FEB 05, 2026
+          {formatDateRange(data.startDate, data.endDate)}
         </Text>
+
         <View style={{ flexDirection: "row" }}>
-          <TicketLabel title="LOCATION">제주도</TicketLabel>
+          <TicketLabel title="LOCATION">{data.placeName}</TicketLabel>
+
           <View
             style={{ borderRightWidth: 1, borderRightColor: colors.NAVY }}
-          ></View>
-          <TicketLabel title="TITLE">2026 제주도 여행</TicketLabel>
+          />
+
+          <TicketLabel title="TITLE">{data.title}</TicketLabel>
         </View>
+
         <View
           style={{
             flexDirection: "row",
@@ -35,18 +59,21 @@ export const Ticket = () => {
             backgroundColor: colors.CREAM,
           }}
         >
-          <TicketLabel title="PEOPLE">3명</TicketLabel>
-          <TicketLabel title="PHOTO">18/24</TicketLabel>
-          <TicketLabel title="VIDEO">14</TicketLabel>
+          <TicketLabel title="PEOPLE">{data.members.length}명</TicketLabel>
+
+          <TicketLabel title="PHOTO">{data.photoCount}</TicketLabel>
+
+          <TicketLabel title="VIDEO">{data.videoCount}</TicketLabel>
         </View>
       </View>
+
       <View
         style={{
           borderRightWidth: 4,
           borderRightColor: colors.NAVY,
           borderStyle: "dashed",
         }}
-      ></View>
+      />
 
       <View style={styles.ticketLeft}>
         <CameraSvg width={46} height={46} />
