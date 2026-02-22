@@ -1,11 +1,21 @@
 import { Ticket } from "@/components/gallery/ticket";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 export default function Gallery() {
   return (
     <SafeAreaView>
       <View style={styles.container}>
+        {/* TODO: 임시 버튼 — 실제 메인화면 구현 시 제거 */}
+        <Pressable
+          style={styles.tempTripButton}
+          onPress={() => router.push("/(tabs)/trip")}
+        >
+          <Text style={styles.tempTripButtonText}>+ 새 여행 만들기 (임시)</Text>
+        </Pressable>
+        {/* TODO END */}
+
         <View style={styles.titleCont}>
           <Text style={styles.title}>진행 중인 여행</Text>
         </View>
@@ -67,4 +77,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#F0F0F0",
   },
+  // TODO: 임시 버튼 스타일 — 실제 메인화면 구현 시 제거
+  tempTripButton: {
+    alignSelf: "flex-start",
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#335270",
+    borderRadius: 8,
+  },
+  tempTripButtonText: {
+    color: "#F0F0F0",
+    fontSize: 14,
+    fontFamily: "MonoplexKR-Medium",
+  },
+  // TODO END
 });

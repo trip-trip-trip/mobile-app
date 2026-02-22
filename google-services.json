@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1000783591770",
+    "project_id": "tripshot-37adb",
+    "storage_bucket": "tripshot-37adb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1000783591770:android:8523337ca7a5187e5b9b63",
+        "android_client_info": {
+          "package_name": "com.anonymous.tripshot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzWls4T5_KHbIIgBL1jSR6g47cyGBa9FA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1000783591770:android:8735beb218b6d1af5b9b63",
+        "android_client_info": {
+          "package_name": "tripshot.android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzWls4T5_KHbIIgBL1jSR6g47cyGBa9FA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

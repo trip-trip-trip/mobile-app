@@ -1,4 +1,4 @@
-import GoBackIcon from "@/assets/icons/GoBackIcon";
+import GoBackIcon from "@/components/icons/GoBackIcon";
 import Header from "@/components/Header";
 import InviteCard from "@/components/invite/InviteCard";
 import { colors } from "@/constants/colors";
