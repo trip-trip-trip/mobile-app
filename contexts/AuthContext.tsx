@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { setHeader, removeHeader } from "@/utils/header";
 import {
   saveSecureStore,
@@ -6,6 +7,8 @@ import {
   deleteSecureStore,
 } from "@/utils/secureStore";
 import type { AuthUser } from "@/types/auth";
+import { registerDevice } from "@/api/setting";
+import * as Notifications from "expo-notifications";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -55,6 +58,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]);
     setUser(userData);
     setSignupTokenState(null);
+
+    // FCM 디바이스 토큰 등록 (중복 등록 방지: SecureStore에 저장된 토큰과 비교)
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === "granted") {
+        const expoPushToken = await Notifications.getExpoPushTokenAsync();
+        const deviceToken = expoPushToken.data;
+        const storedToken = await getSecureStore("deviceToken");
+        if (storedToken !== deviceToken) {
+          await registerDevice({
+            platform: Platform.OS,
+            deviceToken,
+          });
+          await saveSecureStore("deviceToken", deviceToken);
+        }
+      }
+    } catch {
+      // 토큰 등록 실패는 로그인 흐름을 막지 않음
+    }
   };
 
   // signup 토큰은 메모리에만 보관 (회원가입 플로우 중 임시 사용)
@@ -67,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([
       deleteSecureStore("accessToken"),
       deleteSecureStore("authUser"),
+      deleteSecureStore("deviceToken"),
     ]);
     setUser(null);
     setSignupTokenState(null);
