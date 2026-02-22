@@ -1,7 +1,28 @@
 import { colors } from "@/constants/colors";
+import { TripInfo } from "@/types/GalleryType";
 import { Image, StyleSheet, Text, View } from "react-native";
+import { SharedProfiles } from "./SharedProfiles";
 
-export const AlbumCard = () => {
+type AlbumCardProps = {
+  data: TripInfo;
+};
+
+const formatDateRange = (start: string, end: string) => {
+  const baseOptions: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "2-digit",
+  };
+
+  const startStr = new Date(start).toLocaleDateString("en-US", baseOptions);
+  const endStr = new Date(end).toLocaleDateString("en-US", {
+    ...baseOptions,
+    year: "numeric",
+  });
+
+  return `${startStr} - ${endStr}`.toUpperCase();
+};
+
+export const AlbumCard = ({ data }: AlbumCardProps) => {
   return (
     <View style={styles.card}>
       <Text
@@ -17,27 +38,30 @@ export const AlbumCard = () => {
           backgroundColor: colors.CREAM,
         }}
       >
-        FEB 05 - FEB 05, 2026
+        {formatDateRange(data.startDate, data.endDate)}
       </Text>
+
       <View style={{ flexDirection: "row" }}>
         <View style={styles.cardRight}>
           <Image
-            source={require("../../assets/photo/dummyImage.jpeg")}
+            source={{ uri: data.coverImage }}
             style={{ width: 152, height: 152 }}
           />
         </View>
         <View style={styles.cardLeft}>
           <View
             style={{
-              gap: 6,
+              gap: 4,
               borderBottomWidth: 1,
               borderBottomColor: colors.NAVY,
-              padding: 12,
+              padding: 10,
               width: "100%",
             }}
           >
-            <Text style={styles.contentText}>굉장히 신나는 여행</Text>
-            <Text style={styles.contentShots}>4 SHOTS • 0 VIDEOS</Text>
+            <Text style={styles.contentText}>{data.title}</Text>
+            <Text style={styles.contentShots}>
+              {data.photoCount} SHOTS • {data.videoCount} VIDEOS
+            </Text>
           </View>
           <View style={{ flexDirection: "row" }}>
             <View
@@ -46,16 +70,17 @@ export const AlbumCard = () => {
                 borderRightColor: colors.NAVY,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
+                gap: 5,
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
               <Text style={styles.contentTitle}>LOCATION</Text>
-              <Text style={styles.contentText}>제주도</Text>
+              <Text style={styles.contentText}>{data.placeName}</Text>
             </View>
-            <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+            <View style={{ paddingHorizontal: 12, paddingVertical: 6, gap: 5 }}>
               <Text style={styles.contentTitle}>PEOPLE</Text>
-              <Text style={styles.contentText}>사람들</Text>
+              <SharedProfiles data={data.members} size={16} />
             </View>
           </View>
           <View
@@ -65,23 +90,18 @@ export const AlbumCard = () => {
               flexDirection: "row",
               gap: 5,
               paddingHorizontal: 10,
-              paddingVertical: 6,
+              paddingVertical: 5,
               alignItems: "center",
               height: "auto",
             }}
           >
-            <Image
-              source={require("../../assets/photo/dummyImage.jpeg")}
-              style={{ width: 40, height: 40, borderRadius: 2 }}
-            />
-            <Image
-              source={require("../../assets/photo/dummyImage.jpeg")}
-              style={{ width: 40, height: 40, borderRadius: 2 }}
-            />
-            <Image
-              source={require("../../assets/photo/dummyImage.jpeg")}
-              style={{ width: 40, height: 40, borderRadius: 2 }}
-            />
+            {data.photos.slice(0, 4).map((p, index) => (
+              <Image
+                key={index}
+                source={{ uri: p }}
+                style={{ width: 40, height: 40, borderRadius: 2 }}
+              />
+            ))}
           </View>
         </View>
       </View>
