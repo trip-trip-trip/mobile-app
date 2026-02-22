@@ -16,7 +16,6 @@ import {
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const TRIP_INFO = {
   isTraveling: true,
@@ -65,13 +64,11 @@ type TripStatus = "active" | "completed";
 export default function Album() {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // ✅ params 타입 좁히기
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
 
   const todayDate = new Date().toISOString().split("T")[0];
   const [tripStatus, setTripStatus] = useState<TripStatus>("active");
 
-  // ✅ days 배열 그대로 저장할 거면 TripDay[]가 맞음
   const [mediaData, setMediaData] = useState<TripDay[]>([]);
 
   // 스크롤 시 현재 인덱스 계산
@@ -81,41 +78,12 @@ export default function Album() {
     if (currentIndex !== activeIndex) setActiveIndex(currentIndex);
   };
 
-  // 여행 상세정보 조회
-  const fetchTripDetail = async () => {
-    if (!API_URL) throw new Error("EXPO_PUBLIC_API_URL is not set.");
-    if (!tripId) throw new Error("tripId is missing.");
-
-    const response = await fetch(`${API_URL}/trips/${tripId}`, {
-      method: "GET",
-      headers: { "Content-type": "application/json" },
-    });
-
-    if (!response.ok) {
-      throw new Error(`여행 상세 정보 조회 실패: ${response.status}`);
-    }
-
-    const data: TripDetailResponse = await response.json();
-    const days = data.result.days ?? [];
-
-    // ✅ TripStatus는 지금 응답에 start/end가 없어서, 임시로 day.date 기준으로만 대충 판별(원하면 빼도 됨)
-    // - 가장 마지막 day가 오늘보다 이전이면 completed
-    const lastDay = days[days.length - 1];
-    if (lastDay && lastDay.date < todayDate) setTripStatus("completed");
-    else setTripStatus("active");
-
-    setMediaData(days);
-  };
-
+  // 테스트용
   useEffect(() => {
-    // ✅ API 붙이기 전: 더미로 먼저 화면 확인
     setMediaData(MOCK_MEDIA_DATA);
-
-    // ✅ API 연결할 때는 위 한 줄 주석하고 아래 호출
     // fetchTripDetail().catch(console.error);
   }, []);
 
-  // ✅ FlatList renderItem 시그니처 수정
   const renderDayPage = ({ item }: { item: TripDay }) => (
     <View style={styles.dayPage}>
       <DayLabel day={item.dayNumber} date={item.date} />
@@ -132,7 +100,6 @@ export default function Album() {
                   ? `${photo.lat}, ${photo.lng}`
                   : "-"
               }
-              // ✅ PhotoItem이 url 받도록 바꾸면 주석 해제
               // url={photo.url}
             />
           </View>
@@ -150,7 +117,7 @@ export default function Album() {
         leftIcon={<GoBackIcon />}
       />
 
-      <AlbumTitle data={TRIP_INFO} />
+      <AlbumTitle data={TRIP_INFO} isTraveling={true} />
 
       <View style={styles.sectionSeparator} />
 
@@ -165,7 +132,6 @@ export default function Album() {
         scrollEventThrottle={16}
       />
 
-      {/* ✅ 인디케이터도 mediaData 기준으로 */}
       <View style={styles.indicatorContainer}>
         {mediaData.map((_, index) => (
           <View
@@ -228,7 +194,7 @@ const styles = StyleSheet.create({
   },
 });
 
-// ✅ 더미는 "TripDay[]" 타입에 맞게 유지
+// 더미
 export const MOCK_MEDIA_DATA: TripDay[] = [
   {
     dayNumber: 19,

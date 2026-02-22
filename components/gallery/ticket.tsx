@@ -1,5 +1,5 @@
 import { colors } from "@/constants/colors";
-import { TripInfo } from "@/types/GalleryType";
+import { TripInfo } from "@/types/gallery";
 import { StyleSheet, Text, View } from "react-native";
 import CameraSvg from "./../../assets/icons/camera.svg";
 import { TicketLabel } from "./TicketLabel";
@@ -22,8 +22,6 @@ const formatDateRange = (start: string, end: string) => {
 
   return `${startStr} - ${endStr}`.toUpperCase();
 };
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export const Ticket = ({ data }: TicketProps) => {
   return (
