@@ -11,7 +11,7 @@ const CameraIcon = ({ color = colors.NAVY }: Props) => {
   const router = useRouter();
 
   return (
-    <Pressable onPress={() => router.back()} hitSlop={8}>
+    <Pressable onPress={() => router.push("/(tabs)/camera")} hitSlop={8}>
       <Camera width={20} height={18} />
     </Pressable>
   );

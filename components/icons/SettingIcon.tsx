@@ -11,7 +11,7 @@ const SettingIcon = ({ color = colors.NAVY }: Props) => {
   const router = useRouter();
 
   return (
-    <Pressable onPress={() => router.back()} hitSlop={8}>
+    <Pressable onPress={() => router.push("/(tabs)/setting")} hitSlop={8}>
       <Setting width={24} height={24} />
     </Pressable>
   );
