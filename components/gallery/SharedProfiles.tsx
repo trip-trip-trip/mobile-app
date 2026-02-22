@@ -2,7 +2,12 @@ import DefaultProfile from "@/assets/icons/default_profile.svg";
 import { colors } from "@/constants/colors";
 import { Image, StyleSheet, View } from "react-native";
 
-export const SharedProfiles = ({ data }: any) => {
+type profileProps = {
+  data: string[];
+  size: number;
+};
+
+export const SharedProfiles = ({ data, size }: profileProps) => {
   return (
     <View style={styles.container}>
       {data.map((friend: any, index: number) => (
@@ -15,7 +20,7 @@ export const SharedProfiles = ({ data }: any) => {
             />
           ) : (
             <View style={[styles.profile, styles.defaultProfile]}>
-              <DefaultProfile width={27} height={27} />
+              <DefaultProfile width={size} height={size} />
             </View>
           )}
         </View>
@@ -30,15 +35,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   profileWrapper: {
-    marginRight: -5,
+    marginRight: -7,
   },
   profile: {
-    width: 26,
-    height: 26,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: colors.CLOUD,
-    backgroundColor: colors.NAVY,
   },
   defaultProfile: {
     justifyContent: "center",

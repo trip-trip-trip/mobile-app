@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import CameraIcon from "@/components/icons/CameraIcon";
 import SettingIcon from "@/components/icons/SettingIcon";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /** ---------------------------
  * Types
@@ -71,9 +71,8 @@ export default function Gallery() {
   const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   // 3. 활성 여행의 '정보' (제목, 날짜 등)를 담을 state
-  const [activeShotCount, setActiveShotCount] = useState(0);
-  const [tripData, setTripData] = useState({});
-  // 날짜에 따라 여행 -> 시작/완료/대기중 구분
+  // const [activeShotCount, setActiveShotCount] = useState(0);
+  // const [tripData, setTripData] = useState({});
 
   // 활성 여행 정보(여부) 조회
   const fetchActive = async () => {
@@ -161,11 +160,14 @@ export default function Gallery() {
     setCompletedTrips(completedList);
   };
 
+  fetchActive();
+
   //테스트용 더미
   useEffect(() => {
     setHasActive(true);
     setActiveTripInfo(MOCK_ACTIVE_TRIPS[0]);
     setCompletedTrips(MOCK_COMPLETED_TRIPS);
+    console.log(activeTripInfo);
   }, []);
 
   return (
@@ -174,7 +176,7 @@ export default function Gallery() {
     >
       <Header
         label="Album"
-        leftIcon={<CameraIcon />}
+        leftIcon={hasActive ? <CameraIcon /> : ""}
         rightIcon={<SettingIcon />}
         backgroundColor={colors.CLOUD}
         labelColor={colors.NAVY}
@@ -183,21 +185,12 @@ export default function Gallery() {
       <ScrollView style={styles.container}>
         <Title>진행 중인 여행</Title>
         {hasActive ? (
-          <Ticket />
+          activeTripInfo ? (
+            <Ticket data={activeTripInfo} />
+          ) : null
         ) : (
           <View style={{ gap: 34 }}>
-            <Text
-              style={{
-                color: "#000",
-                opacity: 0.5,
-                fontFamily: "Monoplex KR",
-                textAlign: "center",
-                fontSize: 16,
-                fontWeight: 400,
-              }}
-            >
-              진행 중인 여행이 없어요
-            </Text>
+            <Text style={styles.explanation}>진행 중인 여행이 없어요</Text>
             <Pressable
               onPress={() => console.log("눌렷슨")}
               style={styles.button}
@@ -211,13 +204,14 @@ export default function Gallery() {
 
         <Title>지난 여행 기록</Title>
 
-        <Pressable onPress={() => router.push("/gallery/album")}>
-          <AlbumCard />
-        </Pressable>
-
-        <Pressable onPress={() => router.push("/gallery/album")}>
-          <AlbumCard />
-        </Pressable>
+        {completedTrips.map((trip) => (
+          <Pressable
+            key={trip.id}
+            onPress={() => router.push(`/gallery/${trip.id}`)}
+          >
+            <AlbumCard data={trip} />
+          </Pressable>
+        ))}
       </ScrollView>
     </View>
   );
@@ -251,6 +245,14 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     marginBottom: 21,
   },
+  explanation: {
+    color: "#000",
+    opacity: 0.5,
+    fontFamily: "Monoplex KR",
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: 400,
+  },
   button: {
     paddingVertical: 12,
     justifyContent: "center",
@@ -279,7 +281,7 @@ export const MOCK_ACTIVE_TRIPS: TripInfo[] = [
       "https://i.pravatar.cc/100?img=2",
       "https://i.pravatar.cc/100?img=3",
     ],
-    photoCount: 34,
+    photoCount: 19,
     videoCount: 6,
     photos: [
       "https://picsum.photos/400/300?random=11",
@@ -304,17 +306,22 @@ export const MOCK_COMPLETED_TRIPS: TripInfo[] = [
     photoCount: 58,
     videoCount: 12,
     photos: [
-      "https://picsum.photos/400/300?random=21",
-      "https://picsum.photos/400/300?random=22",
+      "https://dimg04.tripcdn.com/images/1mj3n12000qgegys1A1AE_C_800_600_R5.png_.webp?proc=autoorient&proc=source%2Ftrip",
+      "https://cdn.travie.com/news/photo/202404/52446_32970_4834.jpg",
+      "https://db.kookje.co.kr/news2000/photo/2021/1215/L20211215.99099004567i1.jpg",
+      "https://dimg04.tripcdn.com/images/1mj3n12000qgegys1A1AE_C_800_600_R5.png_.webp?proc=autoorient&proc=source%2Ftrip",
+      "https://cdn.travie.com/news/photo/202404/52446_32970_4834.jpg",
+      "https://db.kookje.co.kr/news2000/photo/2021/1215/L20211215.99099004567i1.jpg",
     ],
-    coverImage: "https://picsum.photos/400/300?random=21",
+    coverImage:
+      "https://dimg04.tripcdn.com/images/1mj3n12000qgegys1A1AE_C_800_600_R5.png_.webp?proc=autoorient&proc=source%2Ftrip",
   },
   {
     id: 202,
     placeName: "도쿄",
-    title: "2024 도쿄 크리스마스",
-    startDate: "2024-12-20",
-    endDate: "2024-12-27",
+    title: "2026 도쿄",
+    startDate: "2026-1-20",
+    endDate: "2026-1-27",
     places: [],
     members: [
       "https://i.pravatar.cc/100?img=6",
@@ -324,9 +331,13 @@ export const MOCK_COMPLETED_TRIPS: TripInfo[] = [
     photoCount: 104,
     videoCount: 18,
     photos: [
-      "https://picsum.photos/400/300?random=31",
-      "https://picsum.photos/400/300?random=32",
+      "https://i.namu.wiki/i/2oQQXF9un5Q7GAPYjVv2Qka-i96jrSw8CnJnzNG8D0xNjYn_UF4Xe_NHlGlKtz2tuTyrjtFa6MiM2WEHincmkw.webp",
+      "https://img1.daumcdn.net/thumb/R1280x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/user/3yEW/image/uTwybT9pzj-tFieNR9bKZsSpw18.jpg",
+      "https://dimg04.tripcdn.com/images/1mj2z12000f965feb068B_C_800_600_R5.png_.webp?proc=autoorient&proc=source%2Ftrip",
+      "https://www.datocms-assets.com/101439/1741966285-tokyo.avif?auto=format&fit=crop&h=800&w=1200",
+      "https://dimg04.tripcdn.com/images/1mj2z12000f965feb068B_C_800_600_R5.png_.webp?proc=autoorient&proc=source%2Ftrip",
     ],
-    coverImage: "https://picsum.photos/400/300?random=31",
+    coverImage:
+      "https://i.namu.wiki/i/2oQQXF9un5Q7GAPYjVv2Qka-i96jrSw8CnJnzNG8D0xNjYn_UF4Xe_NHlGlKtz2tuTyrjtFa6MiM2WEHincmkw.webp",
   },
 ];

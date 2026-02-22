@@ -3,14 +3,9 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SharedProfiles } from "./SharedProfiles";
 import { Title } from "./Title";
 
-const DUMMY_FRIENDS = [
-  { name: "철수", profile: "" },
-  { name: "민수", profile: "" },
-  { name: "영수", profile: "" },
-];
+const DUMMY_FRIENDS = ["", "", ""];
 
-type AlbumTitleProps = {
-  isTraveling: boolean;
+type AlbumData = {
   title: string;
   place: string;
   startDate: string;
@@ -19,18 +14,23 @@ type AlbumTitleProps = {
   video: number;
 };
 
-export const AlbumTitle = ({ data }: any) => {
+type AlbumDataProps = {
+  data: AlbumData;
+  isTraveling: boolean;
+};
+
+export const AlbumTitle = ({ data, isTraveling }: AlbumDataProps) => {
   return (
     <View style={styles.topSection}>
-      {data.isTraveling && (
+      {isTraveling && (
         <View style={styles.tag}>
           <Text style={styles.tagText}>지금 여행중</Text>
         </View>
       )}
       <Title>{data.title}</Title>
       <View style={styles.infoRow}>
-        <SharedProfiles data={DUMMY_FRIENDS} />
-        {data.isTraveling && (
+        <SharedProfiles data={DUMMY_FRIENDS} size={25} />
+        {isTraveling && (
           <TouchableOpacity>
             <Text style={styles.inviteText}>친구 초대하기</Text>
           </TouchableOpacity>
