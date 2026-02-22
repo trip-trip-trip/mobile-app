@@ -266,6 +266,21 @@ const styles = StyleSheet.create({
     fontFamily: "Monoplex KR",
     fontWeight: 400,
   },
+  // TODO: 임시 버튼 스타일 — 실제 메인화면 구현 시 제거
+  tempTripButton: {
+    alignSelf: "flex-start",
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#335270",
+    borderRadius: 8,
+  },
+  tempTripButtonText: {
+    color: "#F0F0F0",
+    fontSize: 14,
+    fontFamily: "MonoplexKR-Medium",
+  },
+  // TODO END
 });
 
 export const MOCK_ACTIVE_TRIPS: TripInfo[] = [

@@ -11,8 +11,8 @@ export default function TripsLayout() {
         },
       }}
     >
-      {/* trips/index.tsx 화면에 대한 설정 */}
       <Stack.Screen name="index" />
+      <Stack.Screen name="schedule" />
     </Stack>
   );
 }
