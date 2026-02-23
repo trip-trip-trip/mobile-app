@@ -1,14 +1,14 @@
+import { registerDevice } from "@/api/setting";
+import type { AuthUser } from "@/types/auth";
+import { removeHeader, setHeader } from "@/utils/header";
+import {
+  deleteSecureStore,
+  getSecureStore,
+  saveSecureStore,
+} from "@/utils/secureStore";
+import * as Notifications from "expo-notifications";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
-import { setHeader, removeHeader } from "@/utils/header";
-import {
-  saveSecureStore,
-  getSecureStore,
-  deleteSecureStore,
-} from "@/utils/secureStore";
-import type { AuthUser } from "@/types/auth";
-import { registerDevice } from "@/api/setting";
-import * as Notifications from "expo-notifications";
 
 type AuthContextValue = {
   user: AuthUser | null;
