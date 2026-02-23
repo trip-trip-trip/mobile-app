@@ -11,11 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
-<<<<<<< feat-invite
       "bundleIdentifier": "com.anonymous.tripshot", 
-=======
-      "bundleIdentifier": "com.anonymous.tripshot"
->>>>>>> main
+
     },
     "android": {
       "googleServicesFile": "./google-services.json",
