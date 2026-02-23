@@ -146,15 +146,6 @@ const styles = StyleSheet.create({
     fontWeight: 400,
     fontFamily: "Monoplex KR",
   },
-  titleCont: {
-    backgroundColor: "",
-    flex: 1,
-    justifyContent: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.NAVY,
-    borderStyle: "dashed",
-    marginBottom: 21,
-  },
   explanation: {
     color: "#000",
     opacity: 0.5,
