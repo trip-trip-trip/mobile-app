@@ -1,0 +1,65 @@
+import DownloadIcon from "@/assets/icons/download.svg";
+import ShareIcon from "@/assets/icons/share.svg";
+import { colors } from "@/constants/colors";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+type DayLabelProps = {
+  day?: number;
+  date?: string;
+  onDownload?: () => void;
+  onShare?: () => void;
+};
+
+export const DayLabel = ({ day, date, onDownload, onShare }: DayLabelProps) => {
+  return (
+    <View style={styles.dayHeader}>
+      <View style={styles.dayBadge}>
+        <Text style={styles.dayBadgeText}>DAY {day}</Text>
+      </View>
+      <Text style={styles.dayDateText}>{date}</Text>
+      <View style={styles.iconGroup}>
+        <DownloadIcon width={19} />
+        <ShareIcon width={20} />
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  // 가로 스크롤 한 페이지의 스타일
+  dayPage: {
+    width: SCREEN_WIDTH, // 한 페이지가 화면 전체 너비
+    flex: 1,
+  },
+  dayHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginVertical: 15,
+  },
+  dayBadge: {
+    backgroundColor: colors.RED,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 10,
+  },
+  dayBadgeText: {
+    fontFamily: "Monoplex KR",
+    color: "#133352",
+    fontWeight: 700,
+    fontSize: 14,
+  },
+  dayDateText: {
+    fontFamily: "Monoplex KR",
+    fontWeight: 400,
+    fontSize: 14,
+    color: colors.NAVY,
+    flex: 1,
+  },
+  iconGroup: {
+    flexDirection: "row",
+    gap: 16,
+    alignItems: "center",
+  },
+});

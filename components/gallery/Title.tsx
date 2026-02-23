@@ -10,25 +10,19 @@ export const Title = ({ children }: { children: ReactNode }) => {
   );
 };
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    fontFamily: "Monoplex KR",
-  },
   title: {
     fontSize: 24,
     color: colors.NAVY,
     fontFamily: "Monoplex KR",
     fontWeight: 400,
-    margin: 12,
+    marginVertical: 8,
   },
   titleCont: {
-    backgroundColor: "",
-    flex: 1,
+    width: "100%",
     justifyContent: "center",
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.4,
     borderBottomColor: colors.NAVY,
-    borderStyle: "dashed",
+    borderRadius: 1,
     marginBottom: 21,
   },
 });

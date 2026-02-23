@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Alert, View, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Header from "@/components/Header";
+import GoBackIcon from "@/components/icons/GoBackIcon";
 import InviteCard from "@/components/invite/InviteCard";
 import { colors } from "@/constants/colors";
 import { acceptInvite, getInviteInfo } from "@/api/invite";
