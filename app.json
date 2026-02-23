@@ -11,7 +11,11 @@
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
+<<<<<<< feat-invite
+      "bundleIdentifier": "com.anonymous.tripshot", 
+=======
       "bundleIdentifier": "com.anonymous.tripshot"
+>>>>>>> main
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -21,6 +25,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+     
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.tripshot"
