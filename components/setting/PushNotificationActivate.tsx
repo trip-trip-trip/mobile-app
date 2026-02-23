@@ -1,7 +1,6 @@
 import { colors } from "@/constants/colors";
-import useToggle from "@/hooks/useToggle";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -9,15 +8,17 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-type Props = {};
+type Props = {
+  isActive: boolean;
+  onToggle: () => void;
+};
 
 const TRACK_WIDTH = 48;
 const TRACK_PADDING = 4;
 const THUMB_SIZE = 20;
 const TRAVEL = TRACK_WIDTH - TRACK_PADDING * 2 - THUMB_SIZE;
 
-const SettingActivate = ({}: Props) => {
-  const [isActive, toggle] = useToggle(false);
+const SettingActivate = ({ isActive, onToggle }: Props) => {
   const offset = useSharedValue(0);
 
   useEffect(() => {
@@ -42,7 +43,7 @@ const SettingActivate = ({}: Props) => {
         </View>
       </View>
       <Pressable
-        onPress={toggle}
+        onPress={onToggle}
         style={[styles.track, isActive && styles.trackActive]}
       >
         <Animated.View

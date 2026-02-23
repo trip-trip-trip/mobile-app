@@ -37,9 +37,11 @@ function CityItem({
 
         <View style={styles.infoContainer}>
           <Text style={styles.title}>{title}</Text>
-          <Text numberOfLines={1} style={styles.description}>
-            {description}
-          </Text>
+          {description ? (
+            <Text numberOfLines={1} style={styles.description}>
+              {description}
+            </Text>
+          ) : null}
         </View>
 
         <View

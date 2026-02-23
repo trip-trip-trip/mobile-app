@@ -1,9 +1,30 @@
 import { colors } from "@/constants/colors";
-import { StyleSheet, Text, View } from "react-native";
+import { TripInfo } from "@/types/gallery";
+import { router } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import CameraSvg from "./../../assets/icons/camera.svg";
-import { TicketLabel } from "./ticketLabel";
+import { TicketLabel } from "./TicketLabel";
 
-export const Ticket = () => {
+type TicketProps = {
+  data: TripInfo;
+};
+
+const formatDateRange = (start: string, end: string) => {
+  const baseOptions: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "2-digit",
+  };
+
+  const startStr = new Date(start).toLocaleDateString("en-US", baseOptions);
+  const endStr = new Date(end).toLocaleDateString("en-US", {
+    ...baseOptions,
+    year: "numeric",
+  });
+
+  return `${startStr} - ${endStr}`.toUpperCase();
+};
+
+export const Ticket = ({ data }: TicketProps) => {
   return (
     <View style={styles.ticket}>
       <View style={styles.ticketRight}>
@@ -12,22 +33,26 @@ export const Ticket = () => {
             fontSize: 12,
             color: colors.NAVY,
             fontFamily: "Monoplex KR",
-            fontWeight: 700,
+            fontWeight: "700",
             borderBottomWidth: 1,
             borderBottomColor: colors.NAVY,
             paddingVertical: 6,
             paddingHorizontal: 16,
           }}
         >
-          FEB 05 - FEB 05, 2026
+          {formatDateRange(data.startDate, data.endDate)}
         </Text>
+
         <View style={{ flexDirection: "row" }}>
-          <TicketLabel title="LOCATION">제주도</TicketLabel>
+          <TicketLabel title="LOCATION">{data.placeName}</TicketLabel>
+
           <View
             style={{ borderRightWidth: 1, borderRightColor: colors.NAVY }}
-          ></View>
-          <TicketLabel title="TITLE">2026 제주도 여행</TicketLabel>
+          />
+
+          <TicketLabel title="TITLE">{data.title}</TicketLabel>
         </View>
+
         <View
           style={{
             flexDirection: "row",
@@ -35,23 +60,29 @@ export const Ticket = () => {
             backgroundColor: colors.CREAM,
           }}
         >
-          <TicketLabel title="PEOPLE">3명</TicketLabel>
-          <TicketLabel title="PHOTO">18/24</TicketLabel>
-          <TicketLabel title="VIDEO">14</TicketLabel>
+          <TicketLabel title="PEOPLE">{data.members.length}명</TicketLabel>
+
+          <TicketLabel title="PHOTO">{data.photoCount}</TicketLabel>
+
+          <TicketLabel title="VIDEO">{data.videoCount}</TicketLabel>
         </View>
       </View>
+
       <View
         style={{
           borderRightWidth: 4,
           borderRightColor: colors.NAVY,
-          borderStyle: "dashed",
+          borderStyle: "solid",
         }}
-      ></View>
+      />
 
-      <View style={styles.ticketLeft}>
+      <Pressable
+        onPress={() => router.push("/(tabs)/camera")}
+        style={styles.ticketLeft}
+      >
         <CameraSvg width={46} height={46} />
         <Text style={styles.contentText}>촬영하기</Text>
-      </View>
+      </Pressable>
     </View>
   );
 };
@@ -63,15 +94,6 @@ const styles = StyleSheet.create({
     fontWeight: 400,
     fontFamily: "Monoplex KR",
   },
-  titleCont: {
-    backgroundColor: "",
-    flex: 1,
-    justifyContent: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.NAVY,
-    borderStyle: "dashed",
-    marginBottom: 21,
-  },
   ticket: {
     flexDirection: "row",
     width: "100%",
@@ -82,17 +104,18 @@ const styles = StyleSheet.create({
     elevation: 8 /* Android용 */,
   },
   ticketLeft: {
-    width: "25%",
+    width: "27%",
     justifyContent: "center",
     alignItems: "center",
     alignSelf: "stretch",
     backgroundColor: colors.NAVY,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.NAVY,
-    borderStyle: "dashed",
+    // borderLeftWidth: 2.5,
+    gap: 4,
+    // borderLeftColor: colors.CREAM,
+    // borderStyle: "dashed",
   },
   ticketRight: {
-    width: "75%",
+    width: "73%",
     justifyContent: "center",
     backgroundColor: colors.CLOUD,
   },

@@ -11,9 +11,14 @@
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
+<<<<<<< feat-invite
       "bundleIdentifier": "com.anonymous.tripshot", 
+=======
+      "bundleIdentifier": "com.anonymous.tripshot"
+>>>>>>> main
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -22,7 +27,8 @@
       },
      
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.tripshot"
     },
     "web": {
       "output": "static",
@@ -65,7 +71,8 @@
           ]
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
