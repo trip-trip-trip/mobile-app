@@ -1,4 +1,5 @@
 import { colors } from "@/constants/colors";
+import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SharedProfiles } from "./SharedProfiles";
 import { Title } from "./Title";
@@ -32,7 +33,12 @@ export const AlbumTitle = ({ data, isTraveling }: AlbumDataProps) => {
         <SharedProfiles data={DUMMY_FRIENDS} size={25} />
         {isTraveling && (
           <TouchableOpacity>
-            <Text style={styles.inviteText}>친구 초대하기</Text>
+            <Text
+              style={styles.inviteText}
+              onPress={() => router.push("/(tabs)/invite")}
+            >
+              친구 초대하기
+            </Text>
           </TouchableOpacity>
         )}
       </View>
