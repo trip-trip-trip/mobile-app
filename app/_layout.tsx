@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import queryClient from "@/api/queryClient";
 import useDeviceToken from "@/hooks/useDeviceToken";
 import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
@@ -60,17 +61,19 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AuthGuard />
-        <Stack>
-          <Stack.Screen name="auth" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="(tabs)"
-            options={{ headerShown: false, navigationBarHidden: true }}
-          />
-        </Stack>
-      </AuthProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <AuthGuard />
+          <Stack>
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(tabs)"
+              options={{ headerShown: false, navigationBarHidden: true }}
+            />
+          </Stack>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

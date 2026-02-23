@@ -6,9 +6,9 @@ import {
   SectionList,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { Pressable as GHPressable } from "react-native-gesture-handler";
 import { router } from "expo-router";
 
 import CityItem from "@/components/CityItem";
@@ -18,6 +18,7 @@ import GoBackIcon from "@/components/icons/GoBackIcon";
 import { colors } from "@/constants";
 import { useGetPlaces } from "@/hooks/queries/useTripQuery";
 import type { PlaceRes } from "@/types/trip";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type CityDisplayItem = PlaceRes & { description: string };
 type Section = { title: string; data: CityDisplayItem[] };
@@ -48,43 +49,54 @@ export default function TripsIndex() {
   const [subFilter, setSubFilter] = useState("전체");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
+  const insets = useSafeAreaInsets();
+
   const { data: places, isLoading, isError, refetch } = useGetPlaces();
 
   // 플랫 리스트 → 트리 구조 변환
-  const { placesById, childrenOf, domesticFilterTabs, internationalFilterTabs } =
-    useMemo(() => {
-      if (!places?.length) {
-        return {
-          placesById: new Map<number, PlaceRes>(),
-          childrenOf: new Map<number | null, PlaceRes[]>(),
-          domesticFilterTabs: [] as PlaceRes[],
-          internationalFilterTabs: [] as PlaceRes[],
-        };
-      }
+  const {
+    placesById,
+    childrenOf,
+    domesticFilterTabs,
+    internationalFilterTabs,
+  } = useMemo(() => {
+    if (!places?.length) {
+      return {
+        placesById: new Map<number, PlaceRes>(),
+        childrenOf: new Map<number | null, PlaceRes[]>(),
+        domesticFilterTabs: [] as PlaceRes[],
+        internationalFilterTabs: [] as PlaceRes[],
+      };
+    }
 
-      const placesById = new Map(places.map((p) => [p.id, p]));
-      const childrenOf = new Map<number | null, PlaceRes[]>();
+    const placesById = new Map(places.map((p) => [p.id, p]));
+    const childrenOf = new Map<number | null, PlaceRes[]>();
 
-      for (const p of places) {
-        const key: number | null = p.parentId ?? null;
-        if (!childrenOf.has(key)) childrenOf.set(key, []);
-        childrenOf.get(key)!.push(p);
-      }
+    for (const p of places) {
+      const key: number | null = p.parentId ?? null;
+      if (!childrenOf.has(key)) childrenOf.set(key, []);
+      childrenOf.get(key)!.push(p);
+    }
 
-      // 국내: type=COUNTRY, name="한국" 인 place의 자식이 필터 탭
-      const koreaId =
-        places.find((p) => p.type === "COUNTRY" && p.name === "한국")?.id ??
-        null;
-      const domesticFilterTabs =
-        koreaId != null ? (childrenOf.get(koreaId) ?? []) : [];
+    // 국내: type=COUNTRY, name="대한민국" 인 place의 자식이 필터 탭
+    const koreaId =
+      places.find((p) => p.type === "COUNTRY" && p.name === "대한민국")?.id ??
+      null;
+    const domesticFilterTabs =
+      koreaId != null ? (childrenOf.get(koreaId) ?? []) : [];
 
-      // 해외: 최상위(parentId=null) place 중 한국 제외한 나머지
-      const internationalFilterTabs = (childrenOf.get(null) ?? []).filter(
-        (p) => !(p.type === "COUNTRY" && p.name === "한국"),
-      );
+    // 해외: 최상위(parentId=null) place 중 대한민국 제외한 나머지
+    const internationalFilterTabs = (childrenOf.get(null) ?? []).filter(
+      (p) => !(p.type === "COUNTRY" && p.name === "대한민국"),
+    );
 
-      return { placesById, childrenOf, domesticFilterTabs, internationalFilterTabs };
-    }, [places]);
+    return {
+      placesById,
+      childrenOf,
+      domesticFilterTabs,
+      internationalFilterTabs,
+    };
+  }, [places]);
 
   // 현재 탭 + 필터 기준 SectionList 데이터
   const sections: Section[] = useMemo(() => {
@@ -101,7 +113,13 @@ export default function TripsIndex() {
         data: getCityDescendants(filterItem.id, childrenOf),
       }))
       .filter((s) => s.data.length > 0);
-  }, [mainTab, subFilter, domesticFilterTabs, internationalFilterTabs, childrenOf]);
+  }, [
+    mainTab,
+    subFilter,
+    domesticFilterTabs,
+    internationalFilterTabs,
+    childrenOf,
+  ]);
 
   const currentFilterTabs =
     mainTab === "국내" ? domesticFilterTabs : internationalFilterTabs;
@@ -230,14 +248,20 @@ export default function TripsIndex() {
         }
       />
 
+      {/* GHPressable: gesture handler가 UIScrollView 터치 체인을 우회하여 iOS 26에서도 동작 */}
       {selectedIds.length > 0 && (
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.buttonContainer}
+        <GHPressable
+          style={({ pressed }) => [
+            styles.buttonContainer,
+            { paddingBottom: insets.bottom },
+            pressed && styles.buttonPressed,
+          ]}
           onPress={handleComplete}
         >
-          <Text style={styles.buttonText}>{`여행지 ${selectedIds.length}개 선택`}</Text>
-        </TouchableOpacity>
+          <Text
+            style={styles.buttonText}
+          >{`여행지 ${selectedIds.length}개 선택`}</Text>
+        </GHPressable>
       )}
     </View>
   );
@@ -245,7 +269,7 @@ export default function TripsIndex() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.CLOUD },
-  // flexGrow: 1 + flexShrink: 1 (flexBasis: auto 유지) → 버튼 공간을 먼저 확보 후 나머지를 차지
+  // flexGrow:1 + flexShrink:1 → 버튼 자연 높이 먼저 확보 후 나머지 공간 차지
   list: { flexGrow: 1, flexShrink: 1 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   headerTitleContainer: {
@@ -279,7 +303,7 @@ const styles = StyleSheet.create({
     fontFamily: "MonoplexKR-Medium",
   },
   activeMainTabText: { fontFamily: "MonoplexKR-Bold" },
-  filterContainer: { paddingHorizontal: 20, paddingVertical: 8 },
+  filterContainer: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 0 },
   listContent: { paddingBottom: 20 },
   sectionHeader: {
     backgroundColor: colors.CLOUD,
@@ -294,10 +318,12 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 60,
     backgroundColor: colors.NAVY,
     alignItems: "center",
     justifyContent: "center",
+  },
+  buttonPressed: {
+    opacity: 0.8,
   },
   buttonText: {
     color: colors.CREAM,
