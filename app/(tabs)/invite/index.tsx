@@ -1,13 +1,8 @@
-<<<<<<< feat-invite
 import React from "react";
 import { View, Alert, Share } from "react-native";
-=======
->>>>>>> main
 import Header from "@/components/Header";
-import GoBackIcon from "@/components/icons/GoBackIcon";
 import InviteCard from "@/components/invite/InviteCard";
 import { colors } from "@/constants/colors";
-<<<<<<< feat-invite
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import * as Clipboard from "expo-clipboard";
 import { createInvite } from "@/api/invite";
@@ -41,7 +36,6 @@ export default function InviteIndexScreen() {
       const { inviteCode } = await createInvite(targetTripId);
       
       // [수정] 앱 실행을 보장하기 위해 Custom Scheme 주소 반환
-      // 나중에 Universal Link가 완벽해지면 https://... 주소로 바꾸면 된다.
       return `tripshot://invite/InviteReceived?code=${inviteCode}`;
 
     } catch (err) {
@@ -68,9 +62,6 @@ export default function InviteIndexScreen() {
       });
     }
   };
-=======
-import { View } from "react-native";
->>>>>>> main
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.CREAM }}>
