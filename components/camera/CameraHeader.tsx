@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -6,9 +7,19 @@ const CameraHeader = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Ionicons name="images-outline" size={24} color="white" />
+        <Ionicons
+          name="images-outline"
+          size={24}
+          color="white"
+          onPress={() => router.push("/(tabs)/gallery")}
+        />
         <Text style={styles.title}>Camera</Text>
-        <Ionicons name="settings-outline" size={24} color="white" />
+        <Ionicons
+          name="settings-outline"
+          size={24}
+          color="white"
+          onPress={() => router.push("/(tabs)/setting")}
+        />
       </View>
 
       <View style={styles.dayWrapper}>
