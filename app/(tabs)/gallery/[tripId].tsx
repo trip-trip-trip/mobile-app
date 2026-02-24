@@ -73,18 +73,17 @@ export default function Album() {
     </View>
   );
 
-  const albumTitleData = useMemo(
-    () => ({
-      isTraveling: true,
-      title: "Album",
-      place: "",
-      startDate: "",
-      endDate: "",
-      shots: 0,
-      video: 0,
-    }),
-    []
-  );
+  const albumTitleData = useMemo(() => {
+  return {
+    id: tripId, 
+    title: "우리들의 여행",
+    place: "장소 미정",
+    startDate: "",
+    endDate: "",
+    shots: 0,
+    video: 0,
+  };
+}, [tripId]);
 
   return (
     <View style={styles.safeArea}>
