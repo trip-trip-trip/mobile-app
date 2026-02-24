@@ -24,7 +24,7 @@ export const DayLabel = ({
       </View>
       <Text style={styles.dayDateText}>{date}</Text>
       <View style={styles.iconGroup}>
-        <DownloadIcon width={19} />
+        <DownloadIcon width={19} onPress={onDownload} />
         <ShareIcon width={20} />
       </View>
     </View>
