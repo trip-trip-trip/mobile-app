@@ -10,40 +10,43 @@ import { getActiveTrips } from "@/api/trip";
 import { useLocalSearchParams } from "expo-router";
 
 export default function InviteIndexScreen() {
-  const { tripId: paramTripId } = useLocalSearchParams<{ tripId: string }>();
+const params = useLocalSearchParams();
+  console.log("🔗 InviteIndexScreen에 들어온 전체 params:", params);console.log("🔗 InviteIndexScreen에 들어온 전체 params:", params);
+const paramTripId = params.tripId;
 
   const getInviteLink = async () => {
-    let targetTripId: number;
+  let targetTripId: number;
 
-    try {
-      // 1. 타겟 Trip ID 결정
-      if (paramTripId) {
-        targetTripId = parseInt(paramTripId);
-      } else {
-        const response = await getActiveTrips();
-        const trips = response?.trip || [];
-        
-        if (trips.length === 0) {
-          console.log("데이터가 없어서 임시 ID 1번으로 진행 시도");
-          targetTripId = 1; 
-        } else {
-          const activeTrip = trips.find((t: any) => t.status === "ACTIVE") || trips[0];
-          targetTripId = activeTrip.id;
-        }
-      }
-
-      // 2. 서버에 초대 코드 요청
-      const { inviteCode } = await createInvite(targetTripId);
+  try {
+    // 1. 파라미터로 넘어온 tripId가 있는지 최우선으로 확인
+    if (paramTripId) {
+      targetTripId = Number(paramTripId);
+      console.log("📍 전달받은 tripId 사용:", targetTripId);
+    } else {
+      // 파라미터가 없을 때만 서버에 물어봄
+      const response = await getActiveTrips();
+      const trips = response?.trip || [];
       
-      // [수정] 앱 실행을 보장하기 위해 Custom Scheme 주소 반환
-      return `tripshot://invite/InviteReceived?code=${inviteCode}`;
-
-    } catch (err) {
-      console.log("서버 통신 실패 또는 데이터 없음, 가짜 링크로 UI 테스트 진행");
-      // catch 블록 안에서 inviteCode가 없으므로 고정된 더미 값을 보냄
-      return `tripshot://invite/InviteReceived?code=DUMMY_CODE_123`;
+      if (trips.length === 0) {
+        console.log("서버에 진행 중인 여행이 없음");
+        // 여기서 에러를 내거나 유저에게 알림을 줘야 함
+        throw new Error("초대할 수 있는 여행이 없습니다.");
+      } else {
+        const activeTrip = trips.find((t: any) => t.status === "ACTIVE") || trips[0];
+        targetTripId = activeTrip.id;
+      }
     }
-  };
+
+    // 2. 서버에 초대 코드 요청 (이제 targetTripId는 39가 될 거야)
+    const { inviteCode } = await createInvite(targetTripId);
+    return `tripshot://invite/InviteReceived?code=${inviteCode}`;
+
+  } catch (err) {
+    console.log("❌ 초대 링크 생성 실패:", err);
+    // 여기서 Alert을 띄워주면 좋아
+    return null; 
+  }
+};
 
   const handleCopyLink = async () => {
     const url = await getInviteLink();
