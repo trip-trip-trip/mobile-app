@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import DownWhiteIcon from "@/assets/icons/down_white.svg";
 import { colors } from "@/constants/colors";
 import { formatEnglishDate } from "@/utils/date";
 import { ResizeMode, Video } from "expo-av";
@@ -59,9 +60,7 @@ const PhotoVideoDetailView = ({
           style={styles.iconBtn}
           disabled={!onDownload}
         >
-          <Text style={[styles.iconText, !onDownload && styles.disabledIcon]}>
-            ⬇
-          </Text>
+          <DownWhiteIcon width={24} />
         </Pressable>
       </View>
 
@@ -110,13 +109,12 @@ const styles = StyleSheet.create({
     backgroundColor: "black",
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 18,
     paddingTop: 50,
     paddingBottom: 20,
   },
   iconBtn: {
-    width: 44,
-    height: 44,
     justifyContent: "center",
     alignItems: "center",
   },
