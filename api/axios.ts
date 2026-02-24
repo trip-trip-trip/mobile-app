@@ -6,9 +6,4 @@ const axiosInstance = axios.create({
   baseURL: BASE_URL,
 });
 
-console.log(
-  "🔑 ACCESS TOKEN (axios header):",
-  axiosInstance.defaults.headers.common.Authorization
-);
-
 export default axiosInstance;

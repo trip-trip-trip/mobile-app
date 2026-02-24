@@ -8,18 +8,18 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { Image } from "expo-image";
-
 import { colors } from "@/constants/colors";
 import { formatEnglishDate } from "@/utils/date";
+import { ResizeMode, Video } from "expo-av";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = {
-  title?: string; // "Album" 기본
-  imageUrl: string;
+  mediaKind: string;
+  mediaUrl: string;
 
-  date: string; // "2026-02-05" or ISO
-  dayLabel: string; // "D1-#01" 같은 표시
+  date: string;
+  dayLabel: string;
 
   lat?: number | null;
   lng?: number | null;
@@ -32,26 +32,20 @@ type Props = {
   containerStyle?: StyleProp<ViewStyle>;
 };
 
-const PhotoDetailView = ({
-  imageUrl,
+const PhotoVideoDetailView = ({
+  mediaKind,
+  mediaUrl,
   date,
   dayLabel,
-  lat = null,
-  lng = null,
   comment = null,
   onClose,
   onDownload,
   containerStyle,
 }: Props) => {
   const dateText = useMemo(() => formatEnglishDate(date), [date]);
-  // const coordText = useMemo(
-  //   () => formatCoordLabelDecimal(lat, lng),
-  //   [lat, lng]
-  // );
 
   return (
     <SafeAreaView style={[styles.root, containerStyle]}>
-      {/* 하단 바  */}
       <View style={styles.blackBar}>
         <Pressable onPress={onClose} hitSlop={12} style={styles.iconBtn}>
           <Text style={styles.iconText}>✕</Text>
@@ -71,29 +65,32 @@ const PhotoDetailView = ({
         </Pressable>
       </View>
 
-      {/* 사진 */}
-      <View style={styles.imageWrap}>
-        <Image
-          source={{ uri: imageUrl }}
-          style={styles.image}
-          contentFit="cover"
-          transition={120}
-        />
+      {/* 미디어 */}
+      <View style={styles.mediaWrap}>
+        {mediaKind === "photo" ? (
+          <Image
+            source={{ uri: mediaUrl }}
+            style={styles.media}
+            contentFit="cover"
+            transition={120}
+          />
+        ) : (
+          <Video
+            source={{ uri: mediaUrl }}
+            style={styles.media}
+            resizeMode={ResizeMode.CONTAIN}
+            useNativeControls
+            shouldPlay
+            isMuted={false}
+          />
+        )}
 
-        {/* {coordText ? (
-          <View style={styles.coordBadge}>
-            <Text style={styles.coordText}>{coordText}</Text>
-          </View>
-        ) : null} */}
-
-        {/* 하단 바 */}
         <View style={styles.bottomStrip}>
           <Text style={styles.dateText}>{dateText}</Text>
           <Text style={styles.dayText}>{dayLabel}</Text>
         </View>
       </View>
 
-      {/* 코멘트 */}
       <View style={styles.commentSection}>
         <Text style={styles.commentTitle}>Comment</Text>
         <Text style={styles.commentBody}>
@@ -104,13 +101,10 @@ const PhotoDetailView = ({
   );
 };
 
-export default PhotoDetailView;
+export default PhotoVideoDetailView;
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "black",
-  },
+  root: { flex: 1, backgroundColor: "black" },
   blackBar: {
     height: 110,
     backgroundColor: "black",
@@ -126,36 +120,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  iconText: {
-    fontSize: 26,
-    color: "white",
-  },
-  disabledIcon: {
-    opacity: 0.35,
-  },
+  iconText: { fontSize: 26, color: "white" },
+  disabledIcon: { opacity: 0.35 },
 
-  imageWrap: {
-    flex: 1,
-    backgroundColor: "black",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  coordBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "rgba(230,230,230,0.9)",
-    borderRadius: 8,
-  },
-  coordText: {
-    color: "#222",
-    fontSize: 14,
-    fontFamily: "Monoplex KR",
-  },
+  mediaWrap: { flex: 1, backgroundColor: "black" },
+  media: { width: "100%", height: "100%" },
 
   bottomStrip: {
     position: "absolute",
@@ -174,11 +143,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Monoplex KR",
   },
-  dayText: {
-    color: colors.RED,
-    fontSize: 18,
-    fontFamily: "Monoplex KR",
-  },
+  dayText: { color: colors.RED, fontSize: 18, fontFamily: "Monoplex KR" },
 
   commentSection: {
     paddingHorizontal: 18,
@@ -186,11 +151,7 @@ const styles = StyleSheet.create({
     backgroundColor: "black",
     gap: 12,
   },
-  commentTitle: {
-    color: "white",
-    fontSize: 20,
-    fontFamily: "Monoplex KR",
-  },
+  commentTitle: { color: "white", fontSize: 20, fontFamily: "Monoplex KR" },
   commentBody: {
     color: "white",
     fontSize: 16,

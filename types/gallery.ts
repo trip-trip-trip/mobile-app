@@ -65,6 +65,15 @@ export type TripDay = {
   videos: DayMedia[];
 };
 
+export type TripDetail = {
+  tripId: number;
+  title: string;
+  startDate: string;
+  endDate: string;
+  memberProfileUrls: string[];
+  days: TripDay[];
+};
+
 export type TripDetailResponse = {
   isSuccess: boolean;
   code: number;

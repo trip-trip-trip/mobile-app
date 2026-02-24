@@ -29,6 +29,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function Album() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selected, setSelected] = useState<DayMedia | null>(null);
+  const selectedKind =
+    selected?.mediaKind === "VIDEO" || selected?.captureType === "VIDEO"
+      ? "video"
+      : "photo";
+  console.log("미디어종류", selectedKind);
   const [selectedMeta, setSelectedMeta] = useState<{
     date: string;
     dayLabel: string;
@@ -63,6 +68,7 @@ export default function Album() {
   );
 
   const currentDay = mediaData[activeIndex];
+  console.log("VIDEO", currentDay?.videos);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -150,46 +156,43 @@ export default function Album() {
           ))}
         </View>
 
-        <View
-          style={{
-            flex: 1,
-          }}
-        >
+        <View style={styles.videoGrid}>
           {currentDay?.videos.map((video, idx) => (
-            <Pressable
-              key={video.id}
-              onPress={() => {
-                setSelected(video);
-                setSelectedMeta({
-                  date: currentDay.date,
-                  dayLabel: `D${currentDay.dayNumber}-V${String(
-                    idx + 1
-                  ).padStart(2, "0")}`,
-                });
-              }}
-            >
-              <VideoThumbItem videoUrl={video.url} />
-            </Pressable>
+            <View key={video.id} style={styles.videoItem}>
+              <Pressable
+                onPress={() => {
+                  setSelected(video);
+                  setSelectedMeta({
+                    date: currentDay.date,
+                    dayLabel: `D${currentDay.dayNumber}-V${String(
+                      idx + 1
+                    ).padStart(2, "0")}`,
+                  });
+                }}
+              >
+                <VideoThumbItem videoUrl={video.url} />
+              </Pressable>
+            </View>
           ))}
         </View>
-
-        <PhotoDetailModal
-          visible={Boolean(selected && selectedMeta)}
-          onClose={() => {
-            setSelected(null);
-            setSelectedMeta(null);
-          }}
-          imageUrl={selected?.url ?? ""}
-          date={selectedMeta?.date ?? ""}
-          dayLabel={selectedMeta?.dayLabel ?? ""}
-          lat={selected?.lat ?? null}
-          lng={selected?.lng ?? null}
-          comment={selected?.comment ?? null}
-          onDownload={() => {
-            console.log("download");
-          }}
-        />
       </ScrollView>
+      <PhotoDetailModal
+        visible={Boolean(selected && selectedMeta)}
+        onClose={() => {
+          setSelected(null);
+          setSelectedMeta(null);
+        }}
+        mediaKind={selectedKind}
+        mediaUrl={selected?.url ?? ""}
+        date={selectedMeta?.date ?? ""}
+        dayLabel={selectedMeta?.dayLabel ?? ""}
+        lat={selected?.lat ?? null}
+        lng={selected?.lng ?? null}
+        comment={selected?.comment ?? null}
+        onDownload={() => {
+          console.log("download");
+        }}
+      />
     </View>
   );
 }
@@ -222,11 +225,22 @@ const styles = StyleSheet.create({
     width: "50%",
     padding: 0,
   },
+  videoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 15,
+    paddingBottom: 100,
+  },
+  videoItem: {
+    width: "50%",
+    padding: 2,
+  },
   indicatorContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingBottom: 80,
+    paddingTop: 20,
+    paddingBottom: 30,
     backgroundColor: colors.CLOUD,
   },
   indicatorSquare: {
