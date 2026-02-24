@@ -2,45 +2,66 @@ import DefaultProfile from "@/assets/icons/default_profile.svg";
 import { colors } from "@/constants/colors";
 import { Image, StyleSheet, View } from "react-native";
 
-type profileProps = {
+type ProfileProps = {
   data: string[];
   size: number;
 };
 
-export const SharedProfiles = ({ data, size }: profileProps) => {
+export const SharedProfiles = ({ data, size }: ProfileProps) => {
   return (
     <View style={styles.container}>
-      {data.map((friend: any, index: number) => (
-        <View key={index} style={styles.profileWrapper}>
-          {friend.profile ? (
-            <Image
-              source={{ uri: friend.profile }}
-              style={styles.profile}
-              alt={friend.name || "Friend Profile"}
-            />
-          ) : (
-            <View style={[styles.profile, styles.defaultProfile]}>
-              <DefaultProfile width={size} height={size} />
-            </View>
-          )}
+      {data.length ? (
+        data.map((uri, index) => (
+          <View key={`${uri}-${index}`} style={styles.profileWrapper}>
+            {uri ? (
+              <Image
+                source={{ uri }}
+                style={[styles.profile, { width: size, height: size }]}
+                resizeMode="cover"
+                onError={(e) =>
+                  console.log("profile image error:", uri, e.nativeEvent)
+                }
+              />
+            ) : (
+              <View
+                style={[
+                  styles.profile,
+                  styles.defaultProfile,
+                  { width: size, height: size },
+                ]}
+              >
+                <DefaultProfile width={size} height={size} />
+              </View>
+            )}
+          </View>
+        ))
+      ) : (
+        <View
+          style={[
+            styles.profile,
+            styles.defaultProfile,
+            { width: size, height: size },
+          ]}
+        >
+          <DefaultProfile width={size} height={size} />
         </View>
-      ))}
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  container: { flexDirection: "row", alignItems: "center" },
   profileWrapper: {
     marginRight: -7,
+    overflow: "hidden",
+    backgroundColor: colors.CLOUD,
   },
   profile: {
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: colors.CLOUD,
+    backgroundColor: colors.CLOUD,
   },
   defaultProfile: {
     justifyContent: "center",

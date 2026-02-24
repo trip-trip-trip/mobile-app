@@ -5,17 +5,22 @@ import { Dimensions, StyleSheet, Text, View } from "react-native";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type DayLabelProps = {
-  day?: number;
+  dayNum?: number;
   date?: string;
   onDownload?: () => void;
   onShare?: () => void;
 };
 
-export const DayLabel = ({ day, date, onDownload, onShare }: DayLabelProps) => {
+export const DayLabel = ({
+  dayNum,
+  date,
+  onDownload,
+  onShare,
+}: DayLabelProps) => {
   return (
     <View style={styles.dayHeader}>
       <View style={styles.dayBadge}>
-        <Text style={styles.dayBadgeText}>DAY {day}</Text>
+        <Text style={styles.dayBadgeText}>DAY {dayNum}</Text>
       </View>
       <Text style={styles.dayDateText}>{date}</Text>
       <View style={styles.iconGroup}>
@@ -27,7 +32,6 @@ export const DayLabel = ({ day, date, onDownload, onShare }: DayLabelProps) => {
 };
 
 const styles = StyleSheet.create({
-  // 가로 스크롤 한 페이지의 스타일
   dayPage: {
     width: SCREEN_WIDTH, // 한 페이지가 화면 전체 너비
     flex: 1,
