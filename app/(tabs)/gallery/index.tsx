@@ -12,8 +12,12 @@ import { useGalleryTripsQuery } from "@/hooks/queries/gallery/useAllTrips";
 
 export default function Gallery() {
   const router = useRouter();
-
   const { data } = useGalleryTripsQuery();
+
+  // console.log(
+  //   "🔑 ACCESS TOKEN (axios header):",
+  //   axiosInstance.defaults.headers.common.Authorization
+  // );
 
   const activeTripInfo = data?.activeTrip ?? null;
   const hasActive = Boolean(activeTripInfo);

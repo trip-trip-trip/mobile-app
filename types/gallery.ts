@@ -69,5 +69,12 @@ export type TripDetailResponse = {
   isSuccess: boolean;
   code: number;
   message: string;
-  result: { tripId: number; days: TripDay[] };
+  result: {
+    tripId: number;
+    title: string;
+    startDate: string;
+    endDate: string;
+    memberProfileUrls: string[];
+    days: TripDay[];
+  };
 };

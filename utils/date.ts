@@ -2,33 +2,62 @@ export const getTodayYmd = () => {
   return new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 };
 
-// endDate가 today보다 이전이면 "완료"
+// endDate가 today보다 이전이면 true
 export const isCompletedTrip = (endDate: string, todayYmd: string) => {
   return endDate < todayYmd;
 };
 
-// YYYY-MM-DD을 FEB 12, 2026 같은 식으로 변환
-export const formatDateRangeToEnglish = (start: string, end: string) => {
-  const parseLocalDate = (ymd: string) => {
-    const [y, m, d] = ymd.split("-");
-    return new Date(Number(y), Number(m) - 1, Number(d));
-  };
+const MONTHS = [
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
+] as const;
 
-  const formatFull = (date: Date) =>
-    date
-      .toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-      .toUpperCase();
+export const parseYmdSafe = (input?: string | null) => {
+  if (!input) return null;
+  const ymd = input.includes("T") ? input.split("T")[0] : input;
 
-  const startDate = parseLocalDate(start);
-  const endDate = parseLocalDate(end);
+  const parts = ymd.split("-");
+  if (parts.length !== 3) return null;
 
-  if (start === end) {
-    return formatFull(startDate);
-  }
+  const y = Number(parts[0]);
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
 
-  return `${formatFull(startDate)} - ${formatFull(endDate)}`;
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d))
+    return null;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+
+  return { ymd, y, m, d };
+};
+
+export const formatEnglishDate = (input?: string | null) => {
+  const parsed = parseYmdSafe(input);
+  if (!parsed) return "";
+  const { y, m, d } = parsed;
+  return `${MONTHS[m - 1]} ${String(d).padStart(2, "0")}, ${y}`;
+};
+
+export const formatDateRangeToEnglish = (
+  start?: string | null,
+  end?: string | null
+) => {
+  const s = parseYmdSafe(start);
+  const e = parseYmdSafe(end);
+  if (!s || !e) return "";
+
+  const startStr = formatEnglishDate(s.ymd);
+  const endStr = formatEnglishDate(e.ymd);
+
+  if (s.ymd === e.ymd) return startStr;
+  return `${startStr} - ${endStr}`;
 };

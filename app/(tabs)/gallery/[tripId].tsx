@@ -11,17 +11,28 @@ import {
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from "react-native";
 
+import PhotoDetailModal from "@/components/gallery/PhotoDetailModal";
+import { VideoThumbItem } from "@/components/gallery/VideoThumbItem";
 import { useTripAlbumQuery } from "@/hooks/queries/gallery/useTripDetail";
-import type { TripDay } from "@/types/gallery";
+import type { DayMedia, TripDay } from "@/types/gallery";
+import { getTodayYmd, isCompletedTrip } from "@/utils/date";
+import { formatCoordLabelDms } from "@/utils/location";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function Album() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selected, setSelected] = useState<DayMedia | null>(null);
+  const [selectedMeta, setSelectedMeta] = useState<{
+    date: string;
+    dayLabel: string;
+  } | null>(null);
 
   const params = useLocalSearchParams<{ tripId?: string }>();
 
@@ -33,15 +44,25 @@ export default function Album() {
   }, [params.tripId]);
 
   const albumQuery = useTripAlbumQuery(tripId);
-  const mediaData = albumQuery.data ?? [];
-  console.log(mediaData);
 
-  console.log("ALBUM STATUS:", albumQuery.status);
-  console.log("ALBUM LOADING:", albumQuery.isLoading);
-  console.log("ALBUM ERROR:", albumQuery.error);
-  console.log("ALBUM RAW DATA:", albumQuery.data);
+  const album = albumQuery.data?.result;
+  const mediaData = album?.days ?? [];
 
-  // isCompletedTrip(albumQuery.data)
+  const albumTitleData = useMemo(
+    () => ({
+      isTraveling: true,
+      title: album?.title ?? "",
+      place: "",
+      memberProfileUrls: album?.memberProfileUrls ?? [""],
+      startDate: album?.startDate ?? "",
+      endDate: album?.endDate ?? "",
+      shots: mediaData.reduce((acc, d) => acc + d.photos.length, 0),
+      video: mediaData.reduce((acc, d) => acc + d.videos.length, 0),
+    }),
+    [album?.title, album?.startDate, album?.endDate, mediaData]
+  );
+
+  const currentDay = mediaData[activeIndex];
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -49,42 +70,44 @@ export default function Album() {
     if (currentIndex !== activeIndex) setActiveIndex(currentIndex);
   };
 
-  const renderDayPage = ({ item }: { item: TripDay }) => (
-    <View style={styles.dayPage}>
-      <DayLabel day={item.dayNumber} date={item.date} />
+  const renderDayPage = ({ item, index }: { item: TripDay; index: number }) => {
+    // 일자 - day 1, 2, ..
+    const dayNum = index + 1;
 
-      <View style={styles.photoGrid}>
-        {item.photos.map((photo, index) => (
-          <View key={photo.id} style={styles.photoItem}>
-            <PhotoItem
-              date={item.date}
-              day={item.dayNumber}
-              num={index + 1}
-              location={
-                photo.lat != null && photo.lng != null
-                  ? `${photo.lat}, ${photo.lng}`
-                  : "-"
-              }
-              url={photo.url}
-            />
-          </View>
-        ))}
+    return (
+      <View style={styles.dayPage}>
+        <DayLabel dayNum={dayNum} date={item.date} />
+
+        <View style={styles.photoGrid}>
+          {item.photos.map((photo, index) => {
+            const dayLabel = `D${dayNum}-#${String(index + 1).padStart(
+              2,
+              "0"
+            )}`;
+
+            return (
+              <View key={photo.id} style={styles.photoItem}>
+                <Pressable
+                  onPress={() => {
+                    setSelected(photo);
+                    setSelectedMeta({ date: item.date, dayLabel });
+                  }}
+                >
+                  <PhotoItem
+                    date={item.date}
+                    day={dayNum}
+                    num={index + 1}
+                    location={formatCoordLabelDms(photo.lat, photo.lng)}
+                    image={photo.url}
+                  />
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
       </View>
-    </View>
-  );
-
-  const albumTitleData = useMemo(
-    () => ({
-      isTraveling: true,
-      title: "Album",
-      place: "",
-      startDate: "",
-      endDate: "",
-      shots: 0,
-      video: 0,
-    }),
-    []
-  );
+    );
+  };
 
   return (
     <View style={styles.safeArea}>
@@ -94,40 +117,89 @@ export default function Album() {
         labelColor={colors.NAVY}
         leftIcon={<GoBackIcon />}
       />
+      <ScrollView style={styles.safeArea}>
+        <AlbumTitle
+          data={albumTitleData}
+          isTraveling={!isCompletedTrip(albumTitleData.endDate, getTodayYmd())}
+        />
 
-      <AlbumTitle data={albumTitleData} isTraveling={true} />
+        <View style={styles.sectionSeparator} />
 
-      <View style={styles.sectionSeparator} />
+        <FlatList
+          data={mediaData}
+          renderItem={renderDayPage}
+          keyExtractor={(item) => String(item.dayNumber)}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        />
 
-      <FlatList
-        data={mediaData}
-        renderItem={renderDayPage}
-        keyExtractor={(item) => String(item.dayNumber)}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      />
+        <View style={styles.indicatorContainer}>
+          {mediaData.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.indicatorSquare,
+                activeIndex === index
+                  ? styles.activeIndicator
+                  : styles.inactiveIndicator,
+              ]}
+            />
+          ))}
+        </View>
 
-      <View style={styles.indicatorContainer}>
-        {mediaData.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.indicatorSquare,
-              activeIndex === index
-                ? styles.activeIndicator
-                : styles.inactiveIndicator,
-            ]}
-          />
-        ))}
-      </View>
+        <View
+          style={{
+            flex: 1,
+          }}
+        >
+          {currentDay?.videos.map((video, idx) => (
+            <Pressable
+              key={video.id}
+              onPress={() => {
+                setSelected(video);
+                setSelectedMeta({
+                  date: currentDay.date,
+                  dayLabel: `D${currentDay.dayNumber}-V${String(
+                    idx + 1
+                  ).padStart(2, "0")}`,
+                });
+              }}
+            >
+              <VideoThumbItem videoUrl={video.url} />
+            </Pressable>
+          ))}
+        </View>
+
+        <PhotoDetailModal
+          visible={Boolean(selected && selectedMeta)}
+          onClose={() => {
+            setSelected(null);
+            setSelectedMeta(null);
+          }}
+          imageUrl={selected?.url ?? ""}
+          date={selectedMeta?.date ?? ""}
+          dayLabel={selectedMeta?.dayLabel ?? ""}
+          lat={selected?.lat ?? null}
+          lng={selected?.lng ?? null}
+          comment={selected?.comment ?? null}
+          onDownload={() => {
+            console.log("download");
+          }}
+        />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    fontFamily: "Monoplex KR",
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.CLOUD,
