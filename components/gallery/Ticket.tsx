@@ -92,7 +92,10 @@ export const Ticket = ({ data }: TicketProps) => {
 
       {/* 촬영하기 버튼 */}
       <Pressable
-        onPress={() => router.push("/(tabs)/camera")}
+        onPress={() => router.push({
+      pathname: "/(tabs)/camera",
+      params: { tripId: data.id } // data에 id가 있다고 가정
+    })}
         style={styles.ticketLeft}
       >
         <CameraSvg width={46} height={46} />

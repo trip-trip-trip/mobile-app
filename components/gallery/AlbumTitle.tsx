@@ -7,6 +7,7 @@ import { Title } from "./Title";
 const DUMMY_FRIENDS = ["", "", ""];
 
 type AlbumData = {
+  id: number;
   title: string;
   place: string;
   startDate: string;
@@ -35,7 +36,10 @@ export const AlbumTitle = ({ data, isTraveling }: AlbumDataProps) => {
           <TouchableOpacity>
             <Text
               style={styles.inviteText}
-              onPress={() => router.push("/(tabs)/invite")}
+              onPress={() => router.push({
+                pathname: "/(tabs)/invite",
+                params: { tripId: data.id }
+              })}
             >
               친구 초대하기
             </Text>
