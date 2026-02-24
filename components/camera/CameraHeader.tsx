@@ -3,7 +3,13 @@ import { router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const CameraHeader = () => {
+// 추가할 Props 타입
+type Props = {
+  currentDay: number;
+  totalDays: number;
+};
+
+const CameraHeader = ({ currentDay, totalDays }: Props) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -23,8 +29,8 @@ const CameraHeader = () => {
       </View>
 
       <View style={styles.dayWrapper}>
-        <View style={styles.dayPill}>
-          <Text style={styles.dayText}>Day 1 / 4</Text>
+      <View style={styles.dayPill}>
+          <Text style={styles.dayText}>{`Day ${currentDay} / ${totalDays}`}</Text>
         </View>
       </View>
     </SafeAreaView>
