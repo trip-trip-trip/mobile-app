@@ -1,13 +1,12 @@
+import PhotoDetailView from "@/components/gallery/PhotoDetailUI";
 import { Modal, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import PhotoDetailView from "@/components/gallery/PhotoDetailUI";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-
-  imageUrl: string;
+  mediaKind: string;
+  mediaUrl: string;
   date: string;
   dayLabel: string;
   lat?: number | null;
@@ -20,7 +19,8 @@ type Props = {
 const PhotoDetailModal = ({
   visible,
   onClose,
-  imageUrl,
+  mediaKind,
+  mediaUrl,
   date,
   dayLabel,
   lat,
@@ -33,7 +33,8 @@ const PhotoDetailModal = ({
       <SafeAreaView style={styles.safe}>
         <View style={styles.container}>
           <PhotoDetailView
-            imageUrl={imageUrl}
+            mediaKind={mediaKind}
+            mediaUrl={mediaUrl}
             date={date}
             dayLabel={dayLabel}
             lat={lat}

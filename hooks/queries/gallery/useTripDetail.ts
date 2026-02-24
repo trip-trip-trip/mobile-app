@@ -1,4 +1,4 @@
-import { getTripAlbumDays } from "@/api/album";
+import { getTripAlbumDetail } from "@/api/album";
 import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
 import type { TripDetailResponse } from "@/types/gallery";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 export const useTripAlbumQuery = (tripId: number) => {
   return useQuery<TripDetailResponse, Error>({
     queryKey: albumKeys.detail(tripId),
-    queryFn: () => getTripAlbumDays(tripId),
+    queryFn: () => getTripAlbumDetail(tripId),
     enabled: Number.isFinite(tripId) && tripId > 0,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
