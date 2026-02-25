@@ -27,4 +27,7 @@ export interface TripRes {
   participantAvatarUrls: string[] | null;
 }
 
-export interface ActiveTripCheckRes {}
+export interface ActiveTripCheckRes {
+  isOngoing: boolean;
+  trip: TripRes[] | null;
+}

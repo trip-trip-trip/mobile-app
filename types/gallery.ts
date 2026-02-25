@@ -13,11 +13,10 @@ export type TripInfo = {
 };
 
 export type TripRaw = {
-  id: number;
-  placeName: string;
+  tripId: number;
   title: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  startDate: string;
+  endDate: string;
   places: string[];
   participantAvatarUrls: string[];
   photoCount: number;
@@ -37,5 +36,54 @@ export type TripsResponse = {
 export type ActiveTripResponse = {
   result: {
     isOngoing: boolean;
+  };
+};
+
+// types/album.ts
+export type MediaKind = "PHOTO" | "VIDEO";
+
+export type DayMedia = {
+  id: number;
+  tripId: number;
+  mediaKind: MediaKind;
+  captureType: string;
+  comment: string | null;
+  url: string;
+  uploaderId: number;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  takenAt: string;
+  lat: number | null;
+  lng: number | null;
+};
+
+export type TripDay = {
+  dayNumber: number;
+  date: string; // YYYY-MM-DD
+  photos: DayMedia[];
+  videos: DayMedia[];
+};
+
+export type TripDetail = {
+  tripId: number;
+  title: string;
+  startDate: string;
+  endDate: string;
+  memberProfileUrls: string[];
+  days: TripDay[];
+};
+
+export type TripDetailResponse = {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  result: {
+    tripId: number;
+    title: string;
+    startDate: string;
+    endDate: string;
+    memberProfileUrls: string[];
+    days: TripDay[];
   };
 };

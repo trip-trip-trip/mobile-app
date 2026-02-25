@@ -1,25 +1,11 @@
 import { colors } from "@/constants/colors";
 import { TripInfo } from "@/types/gallery";
+import { formatDateRangeToEnglish } from "@/utils/date";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SharedProfiles } from "./SharedProfiles";
 
 type AlbumCardProps = {
   data: TripInfo;
-};
-
-const formatDateRange = (start: string, end: string) => {
-  const baseOptions: Intl.DateTimeFormatOptions = {
-    month: "short",
-    day: "2-digit",
-  };
-
-  const startStr = new Date(start).toLocaleDateString("en-US", baseOptions);
-  const endStr = new Date(end).toLocaleDateString("en-US", {
-    ...baseOptions,
-    year: "numeric",
-  });
-
-  return `${startStr} - ${endStr}`.toUpperCase();
 };
 
 export const AlbumCard = ({ data }: AlbumCardProps) => {
@@ -38,7 +24,7 @@ export const AlbumCard = ({ data }: AlbumCardProps) => {
           backgroundColor: colors.CREAM,
         }}
       >
-        {formatDateRange(data.startDate, data.endDate)}
+        {formatDateRangeToEnglish(data.startDate, data.endDate)}
       </Text>
 
       <View style={{ flexDirection: "row" }}>

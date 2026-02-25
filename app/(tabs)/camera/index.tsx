@@ -2,14 +2,16 @@ import CameraHeader from "@/components/camera/CameraHeader";
 import PicProgress from "@/components/camera/PicProgress";
 import ShotIndicator from "@/components/camera/ShotIndicator";
 import SwitchCameraButton from "@/components/camera/SwitchCameraButton";
+import FullButton from "@/components/FullButton";
 
 import { BlurView } from "expo-blur";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
+  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -25,6 +27,13 @@ import FilterIcon from "@/assets/icons/filterbutton.svg";
 import PhotoButton from "@/assets/icons/photoButton.svg";
 import VideoButton from "@/assets/icons/videoButton.svg";
 import WhitePanel from "@/assets/icons/whitepanel.svg";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+
+// API 임포트
+import { uploadMedia } from "@/api/media";
+import { useQuery } from "@tanstack/react-query";
+import { getActiveTripData } from "@/api/gallery";
+import { getTripAlbumDetail } from "@/api/album";
 
 const CameraScreen = () => {
   const cameraRef = useRef<CameraView>(null);
@@ -33,18 +42,161 @@ const CameraScreen = () => {
   const [mode, setMode] = useState<"photo" | "video">("photo");
   const [isRecording, setIsRecording] = useState(false);
   const [facing, setFacing] = useState<"front" | "back">("back");
-
   const [isCameraReady, setIsCameraReady] = useState(false);
-
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const [isBlurDetected, setIsBlurDetected] = useState(false);
 
-  const current = 1;
+  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  
+  // API 연동용 상태
+  const [comment, setComment] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const parsedTripId = useMemo(() => {
+    const parsed = Number(tripId);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  }, [tripId]);
+
+  // 1. 현재 여행 정보 실시간 데이터 가져오기 (Day 및 촬영 횟수 계산용)
+  const { data: tripStatus, refetch: refetchTripStatus } = useQuery({
+    queryKey: ["activeTripData"],
+    queryFn: getActiveTripData,
+  });
+
+// 2. 헤더 및 프로그레스 바에 넘길 데이터 계산
+const activeTrip = useMemo(() => {
+  return tripStatus?.trip?.find((t: any) => t.status === "ACTIVE") || tripStatus?.trip?.[0];
+}, [tripStatus]);
+
+const targetTripId = useMemo(() => {
+  return parsedTripId ?? activeTrip?.id;
+}, [parsedTripId, activeTrip?.id]);
+
+const { data: tripDetail, refetch: refetchTripDetail } = useQuery({
+  queryKey: ["tripAlbumDetail", targetTripId],
+  queryFn: () => getTripAlbumDetail(targetTripId as number),
+  enabled: Number.isFinite(targetTripId) && Number(targetTripId) > 0,
+});
+
+const tripDays = useMemo(() => tripDetail?.days ?? [], [tripDetail?.days]);
+
+const todayKstYmd = useMemo(() => {
+  const now = new Date();
+  return new Date(now.getTime() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+}, []);
+
+const todayUtcYmd = useMemo(() => {
+  return new Date().toISOString().split("T")[0];
+}, []);
+
+const expectedDayNumberFromTrip = useMemo(() => {
+  if (!activeTrip?.startDate) return undefined;
+
+  const start = new Date(activeTrip.startDate);
+  const now = new Date();
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffToNow = Math.floor(
+    (today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  return Math.max(0, diffToNow);
+}, [activeTrip?.startDate]);
+
+const dayMeta = useMemo(() => {
+  if (!Array.isArray(tripDays) || tripDays.length === 0) {
+    return { todayData: undefined, currentDayFromDays: 1, totalDaysFromDays: 1 };
+  }
+
+  const dayNumbers = tripDays
+    .map((day: any) => Number(day.dayNumber))
+    .filter((value: number) => Number.isFinite(value));
+
+  const hasDayNumbers = dayNumbers.length > 0;
+  const minDayNumber = hasDayNumbers ? Math.min(...dayNumbers) : 1;
+  const maxDayNumber = hasDayNumbers ? Math.max(...dayNumbers) : 1;
+  const isZeroBased = minDayNumber === 0;
+
+  const byKstDate = tripDays.find((day: any) => day.date === todayKstYmd);
+  const byUtcDate = tripDays.find((day: any) => day.date === todayUtcYmd);
+
+  const expectedRaw = expectedDayNumberFromTrip;
+  const expectedDayNumber =
+    expectedRaw == null ? undefined : isZeroBased ? expectedRaw : expectedRaw + 1;
+  const byExpectedDayNumber =
+    expectedDayNumber == null
+      ? undefined
+      : tripDays.find((day: any) => Number(day.dayNumber) === expectedDayNumber);
+
+  const sortedByDayNumber = [...tripDays].sort(
+    (a: any, b: any) => Number(a.dayNumber) - Number(b.dayNumber)
+  );
+  const byLatestDayNumber = sortedByDayNumber[sortedByDayNumber.length - 1];
+
+  const todayData = byKstDate ?? byUtcDate ?? byExpectedDayNumber ?? byLatestDayNumber;
+  const todayRawNumber = Number(todayData?.dayNumber);
+  const todayNumber = Number.isFinite(todayRawNumber)
+    ? todayRawNumber
+    : isZeroBased
+    ? minDayNumber
+    : 1;
+
+  return {
+    todayData,
+    currentDayFromDays: isZeroBased ? todayNumber + 1 : Math.max(1, todayNumber),
+    totalDaysFromDays: isZeroBased ? maxDayNumber + 1 : Math.max(1, maxDayNumber),
+  };
+}, [tripDays, todayKstYmd, todayUtcYmd, expectedDayNumberFromTrip]);
+
+// [수정] 오늘 찍은 사진 개수 계산 로직
+const currentPicIndex = useMemo(() => {
+  const savedCount = dayMeta.todayData?.photos?.length ?? 0;
+  const nextIndex = savedCount + 1;
+
+  return nextIndex > 4 ? 4 : nextIndex;
+}, [dayMeta.todayData]);
+
+// [수정] Day 계산 로직
+const { currentDay, totalDays } = useMemo(() => {
+  if (tripDetail?.startDate && tripDetail?.endDate) {
+    const start = new Date(tripDetail.startDate);
+    const end = new Date(tripDetail.endDate);
+    const now = new Date();
+
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+    const diffToNow = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24));
+    const diffTotal = Math.floor((endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      currentDay: Math.max(1, diffToNow + 1),
+      totalDays: Math.max(1, diffTotal + 1),
+    };
+  }
+
+  return {
+    currentDay: dayMeta.currentDayFromDays,
+    totalDays: dayMeta.totalDaysFromDays,
+  };
+}, [tripDetail?.startDate, tripDetail?.endDate, dayMeta.currentDayFromDays, dayMeta.totalDaysFromDays]);
+
+useFocusEffect(
+  useCallback(() => {
+    void refetchTripStatus();
+    if (targetTripId) {
+      void refetchTripDetail();
+    }
+  }, [refetchTripStatus, refetchTripDetail, targetTripId])
+);
 
   useEffect(() => {
     if (!permission) return;
     if (!permission.granted) requestPermission();
-  }, [permission]);
+  }, [permission, requestPermission]);
 
   if (!permission?.granted) {
     return <View style={{ flex: 1, backgroundColor: "black" }} />;
@@ -54,52 +206,34 @@ const CameraScreen = () => {
     return new Promise((resolve) => {
       const accelSamples: number[] = [];
       const gyroSamples: number[] = [];
-
       Accelerometer.setUpdateInterval(20);
       Gyroscope.setUpdateInterval(20);
 
       const accelSub = Accelerometer.addListener((data) => {
-        const magnitude = Math.sqrt(
-          data.x * data.x + data.y * data.y + data.z * data.z,
-        );
-        accelSamples.push(Math.abs(magnitude - 1)); // 중력 제거
+        const magnitude = Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2);
+        accelSamples.push(Math.abs(magnitude - 1));
       });
 
       const gyroSub = Gyroscope.addListener((data) => {
-        const magnitude = Math.sqrt(
-          data.x * data.x + data.y * data.y + data.z * data.z,
-        );
+        const magnitude = Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2);
         gyroSamples.push(magnitude);
       });
 
       setTimeout(() => {
         accelSub.remove();
         gyroSub.remove();
-
-        const accelAvg =
-          accelSamples.reduce((a, b) => a + b, 0) / (accelSamples.length || 1);
-
-        const gyroAvg =
-          gyroSamples.reduce((a, b) => a + b, 0) / (gyroSamples.length || 1);
-
-        const shakeScore = accelAvg * 1.3 + gyroAvg * 0.8;
-
-        resolve(shakeScore);
+        const accelAvg = accelSamples.reduce((a, b) => a + b, 0) / (accelSamples.length || 1);
+        const gyroAvg = gyroSamples.reduce((a, b) => a + b, 0) / (gyroSamples.length || 1);
+        resolve(accelAvg * 1.3 + gyroAvg * 0.8);
       }, 350);
     });
   };
 
   const handleShutterPress = async () => {
-    console.log("Shutter Pressed. Ready:", isCameraReady, "Mode:", mode);
-    // 1. 기본적인 체크
-    if (!cameraRef.current || !isCameraReady) {
-      console.log("Camera not ready yet");
-      return;
-    }
+    if (!cameraRef.current || !isCameraReady) return;
 
     if (mode === "photo") {
       try {
-        // 사진 촬영
         const shakePromise = measureShakeWindow();
         const photo = await cameraRef.current.takePictureAsync();
         const shakeScore = await shakePromise;
@@ -109,18 +243,11 @@ const CameraScreen = () => {
         console.error("Photo capture error:", error);
       }
     } else if (mode === "video") {
-      if (isRecording || !isCameraReady) return;
-
+      if (isRecording) return;
       try {
         setIsRecording(true);
-
-        const video = await cameraRef.current.recordAsync({
-          maxDuration: 3,
-        });
-
-        if (video?.uri) {
-          setCapturedUri(video.uri);
-        }
+        const video = await cameraRef.current.recordAsync({ maxDuration: 3 });
+        if (video?.uri) setCapturedUri(video.uri);
       } catch (error) {
         console.error("Video recording error:", error);
       } finally {
@@ -129,42 +256,75 @@ const CameraScreen = () => {
     }
   };
 
+ const handleSave = async () => {
+  if (!capturedUri || isUploading) return;
+
+  try {
+    setIsUploading(true);
+      if (!targetTripId) {
+      Alert.alert("오류", "여행 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    await uploadMedia(mode, targetTripId, capturedUri, comment);
+
+    // 저장 성공 시 알림
+    Alert.alert("성공", "추억이 안전하게 저장되었습니다!", [
+      { 
+        text: "확인", 
+        onPress: async () => {
+          // 중요: 서버 데이터를 다시 불러와서(Refetch) 캐시를 갱신함
+          // 그래야 다시 카메라에 들어왔을 때 currentPicIndex가 업데이트됨
+          await Promise.all([refetchTripStatus(), refetchTripDetail()]);
+          
+          // 초기화 후 갤러리로 이동
+          setCapturedUri(null);
+          setComment("");
+          setIsBlurDetected(false);
+          router.push("/(tabs)/gallery");
+        } 
+      }
+    ]);
+  } catch (error) {
+    console.error("Upload error:", error);
+    Alert.alert("실패", "서버 업로드 중 문제가 발생했습니다.");
+  } finally {
+    setIsUploading(false);
+  }
+};
+
+  // 다시 촬영하기 로직
+  const handleRetake = () => {
+    setCapturedUri(null);
+    setComment("");
+    setIsBlurDetected(false);
+  };
+
   return (
     <View style={styles.container}>
-      <CameraHeader />
+      {/* 1. 하드코딩 제거된 헤더 연동 */}
+      <CameraHeader currentDay={currentDay} totalDays={totalDays} />
 
-      {/* CAMERA AREA */}
       <View style={styles.cameraContainer}>
         {capturedUri ? (
           <View style={styles.resultWrapper}>
             <Image source={{ uri: capturedUri }} style={styles.resultImage} />
-
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+            
+            {/* 사진이 흔들렸을 때 뜨는 경고창의 '다시 찍기' */}
             {isBlurDetected && (
               <View style={styles.blurWarning}>
                 <Text style={styles.warningText}>사진이 약간 흔들렸어요</Text>
-                <Pressable onPress={() => setCapturedUri(null)}>
+                <Pressable onPress={handleRetake}>
                   <Text style={styles.retryText}>다시 찍기</Text>
                 </Pressable>
               </View>
             )}
 
-            <Image
-              source={require("@/assets/camera/photoframe.png")}
-              style={styles.photoFrame}
-              resizeMode="contain"
-            />
-
+            <Image source={require("@/assets/camera/photoframe.png")} style={styles.photoFrame} resizeMode="contain" />
             <View style={styles.resultTextWrapper}>
               <Text style={styles.resultTitle}>촬영 완료!</Text>
-              <Text style={styles.resultSub}>
-                여행이 끝난 후에 확인해보세요!
-              </Text>
+              <Text style={styles.resultSub}>여행이 끝난 후에 확인해보세요!</Text>
             </View>
           </View>
         ) : (
@@ -174,18 +334,14 @@ const CameraScreen = () => {
               style={styles.camera}
               facing={facing}
               mode={mode as any}
-              onCameraReady={() => {
-                console.log("CAMERA READY");
-                setIsCameraReady(true);
-              }}
+              onCameraReady={() => setIsCameraReady(true)}
             />
-
-            <ShotIndicator current={current} />
+            {/* ShotIndicator에도 현재 번호 연동 가능 */}
+            <ShotIndicator current={currentPicIndex} />
           </>
         )}
       </View>
 
-      {/* BOTTOM BAR */}
       <View style={styles.bottomBar}>
         {capturedUri ? (
           <View style={styles.commentWrapper}>
@@ -194,90 +350,68 @@ const CameraScreen = () => {
               style={styles.commentInput}
               placeholder="댓글을 입력하세요"
               placeholderTextColor="#888"
+              value={comment}
+              onChangeText={setComment}
             />
+            <View style={{ gap: 10 }}>
+              <Pressable disabled={isUploading}>
+                <FullButton
+                  type="fill"
+                  label={isUploading ? "저장 중..." : "저장하기"}
+                  onPress={handleSave}
+                />
+              </Pressable>
+            
+            </View>
           </View>
         ) : (
           <>
             <View style={styles.topRow}>
               <View style={styles.centerIndicators}>
                 <RedBar width={69} height={6} />
-                {mode === "photo" ? (
-                  <CamLines width={96} height={16} />
-                ) : (
-                  <VideoLines width={110} height={25} />
-                )}
+                {mode === "photo" ? <CamLines width={96} height={16} /> : <VideoLines width={110} height={25} />}
               </View>
-
               <Pressable style={styles.filterButton}>
                 <FilterIcon width={65} height={37} />
               </Pressable>
             </View>
 
+            {/* 2. 하루 촬영 횟수 프로그레스 연동 */}
             {mode === "photo" && (
               <View style={styles.progressWrapper}>
-                <PicProgress current={current} />
+                <PicProgress current={currentPicIndex} />
               </View>
             )}
 
             <View style={styles.whitePanelWrapper}>
               <WhitePanel width={350} height={193.5} />
             </View>
-
             <View style={styles.centerStack}>
               <View style={styles.modeCenter}>
-                {(["photo", "video"] as const).map((item) => {
-                  const isActive = mode === item;
-                  return (
-                    <Pressable
-                      key={item}
-                      onPress={() => setMode(item)}
-                      style={styles.modeButtonWrapper}
+                {(["photo", "video"] as const).map((item) => (
+                  <Pressable key={item} onPress={() => setMode(item)} style={styles.modeButtonWrapper}>
+                    <LinearGradient
+                      colors={["rgba(190,190,190,0.9)", "rgba(190,190,190,0.2)"]}
+                      style={styles.gradientBorder}
                     >
-                      <LinearGradient
-                        colors={[
-                          "rgba(190,190,190,0.9)",
-                          "rgba(190,190,190,0.2)",
-                        ]}
-                        start={{ x: 0.5, y: 0 }}
-                        end={{ x: 0.5, y: 1 }}
-                        style={styles.gradientBorder}
-                      >
-                        {isActive ? (
-                          <View style={styles.activeButton}>
-                            <Text style={styles.activeText}>
-                              {item === "photo" ? "사진" : "동영상"}
-                            </Text>
-                          </View>
-                        ) : (
-                          <View style={styles.inactiveButton}>
-                            <Text style={styles.inactiveText}>
-                              {item === "photo" ? "사진" : "동영상"}
-                            </Text>
-                          </View>
-                        )}
-                      </LinearGradient>
-                    </Pressable>
-                  );
-                })}
+                      <View style={mode === item ? styles.activeButton : styles.inactiveButton}>
+                        <Text style={mode === item ? styles.activeText : styles.inactiveText}>
+                          {item === "photo" ? "사진" : "동영상"}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                ))}
               </View>
-
               <View style={styles.globalShutter}>
-                <Pressable onPress={handleShutterPress}>
+                <Pressable onPress={handleShutterPress} disabled={isRecording}>
                   {mode === "photo" && <PhotoButton width={78} height={78} />}
-                  {mode === "video" &&
-                    (isRecording ? (
-                      <View style={styles.recordingSquare} />
-                    ) : (
-                      <VideoButton width={78} height={78} />
-                    ))}
+                  {mode === "video" && (isRecording ? <View style={styles.recordingSquare} /> : <VideoButton width={78} height={78} />)}
                 </Pressable>
               </View>
             </View>
-
             <View style={styles.switchWrapper}>
-              <SwitchCameraButton
-                onPress={() => setFacing(facing === "back" ? "front" : "back")}
-              />
+              <SwitchCameraButton onPress={() => setFacing(facing === "back" ? "front" : "back")} />
             </View>
           </>
         )}
@@ -288,10 +422,20 @@ const CameraScreen = () => {
 
 export default CameraScreen;
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#111111",
+  },
+  retakeButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  retakeText: {
+    color: '#888',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 
   cameraContainer: {
