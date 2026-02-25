@@ -32,8 +32,7 @@ import { ActiveTripCheckRes } from "@/types/trip"; // trip.ts에서 정의한 �
 
 export type GetTripsParams = Record<string, never>;
 
-/** * 1. 모든 여행 목록 가져오기 (갤러리 리스트용)
- */
+// GET : 전체 여행 조회
 export const getTrips = async (
   _params?: GetTripsParams
 ): Promise<TripItem[]> => {
@@ -49,7 +48,7 @@ export const getActiveTripData = async (): Promise<ActiveTripCheckRes> => {
   const { data } = await axiosInstance.get<ActiveTripResponse>(
     "/trips/isActiveTrips"
   );
-  
+
   // 명세서 구조에 따라 data.result 반환 { isOngoing: boolean, trip: Trip[] | null }
   return data.result as ActiveTripCheckRes;
 };
