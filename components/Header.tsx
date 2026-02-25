@@ -1,6 +1,6 @@
 import { colors } from "@/constants/colors";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 type Props = {
   label?: string;
@@ -20,7 +20,7 @@ const Header = ({
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <View style={styles.side}>
-        {leftIcon && <Pressable hitSlop={8}>{leftIcon}</Pressable>}
+        {leftIcon}
       </View>
 
       <View style={styles.center}>
@@ -30,7 +30,7 @@ const Header = ({
       </View>
 
       <View style={styles.side}>
-        {rightIcon && <Pressable hitSlop={8}>{rightIcon}</Pressable>}
+        {rightIcon}
       </View>
     </View>
   );

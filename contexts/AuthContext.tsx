@@ -20,6 +20,9 @@ type AuthContextValue = {
   logout: () => Promise<void>;
 };
 
+// true: 앱 재시작 시 로그인 유지 / false: 항상 로그아웃 상태로 시작
+const PERSIST_LOGIN = false;
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -28,11 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // 앱 시작 시 SecureStore에서 저장된 인증 정보 로드
-  // __DEV__ 환경에서는 항상 로그인 화면부터 시작
   useEffect(() => {
     async function loadStoredAuth() {
       try {
-        if (!__DEV__) {
+        if (PERSIST_LOGIN) {
           const [token, userJson] = await Promise.all([
             getSecureStore("accessToken"),
             getSecureStore("authUser"),

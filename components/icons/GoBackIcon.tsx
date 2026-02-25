@@ -12,7 +12,7 @@ const GoBackIcon = ({ color = colors.NAVY }: Props) => {
   const router = useRouter();
 
   return (
-    <Pressable onPress={() => router.back()} hitSlop={8}>
+    <Pressable onPress={() => { if (router.canGoBack()) router.back(); }} hitSlop={8}>
       <Ionicons name="chevron-back" size={24} color={color} />
     </Pressable>
   );
