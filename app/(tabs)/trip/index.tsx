@@ -8,11 +8,11 @@ import {
   Text,
   View,
 } from "react-native";
-import { Pressable as GHPressable } from "react-native-gesture-handler";
 import { router } from "expo-router";
 
 import CityItem from "@/components/CityItem";
 import FilterTab from "@/components/FilterTab";
+import FullButton from "@/components/FullButton";
 import Header from "@/components/Header";
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import { colors } from "@/constants";
@@ -201,67 +201,67 @@ export default function TripsIndex() {
       </View>
 
       {/* 하위 필터 탭 (가로 스크롤) */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterContainer}
-      >
-        <FilterTab
-          label="전체"
-          isSelected={subFilter === "전체"}
-          onPress={() => setSubFilter("전체")}
-        />
-        {currentFilterTabs.map((tab) => (
+      <View style={styles.filterScrollWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
           <FilterTab
-            key={tab.id}
-            label={tab.name}
-            isSelected={subFilter === tab.name}
-            onPress={() => setSubFilter(tab.name)}
+            label="전체"
+            isSelected={subFilter === "전체"}
+            onPress={() => setSubFilter("전체")}
           />
-        ))}
-      </ScrollView>
+          {currentFilterTabs.map((tab) => (
+            <FilterTab
+              key={tab.id}
+              label={tab.name}
+              isSelected={subFilter === tab.name}
+              onPress={() => setSubFilter(tab.name)}
+            />
+          ))}
+        </ScrollView>
+      </View>
 
       {/* 장소 목록 */}
-      <SectionList
-        style={styles.list}
-        sections={sections}
-        keyExtractor={(item) => item.id.toString()}
-        stickySectionHeadersEnabled={false}
-        renderSectionHeader={({ section: { title } }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>{title}</Text>
-          </View>
-        )}
-        renderItem={({ item }) => (
-          <CityItem
-            title={item.name}
-            description={item.description}
-            isSelected={selectedIds.includes(item.id)}
-            onPress={() => handleCityPress(item.id)}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>등록된 장소가 없습니다.</Text>
-          </View>
-        }
-      />
+      {sections.length === 0 ? (
+        <View style={[styles.list, styles.centered]}>
+          <Text style={styles.emptyText}>등록된 장소가 없습니다.</Text>
+        </View>
+      ) : (
+        <SectionList
+          style={styles.list}
+          sections={sections}
+          keyExtractor={(item) => item.id.toString()}
+          stickySectionHeadersEnabled={false}
+          automaticallyAdjustContentInsets={false}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>{title}</Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <CityItem
+              title={item.name}
+              description={item.description}
+              isSelected={selectedIds.includes(item.id)}
+              onPress={() => handleCityPress(item.id)}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
 
-      {/* GHPressable: gesture handler가 UIScrollView 터치 체인을 우회하여 iOS 26에서도 동작 */}
       {selectedIds.length > 0 && (
-        <GHPressable
-          style={({ pressed }) => [
-            styles.buttonContainer,
-            { paddingBottom: insets.bottom },
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={handleComplete}
+        <View
+          style={[styles.buttonWrapper, { paddingBottom: insets.bottom + 16 }]}
         >
-          <Text
-            style={styles.buttonText}
-          >{`여행지 ${selectedIds.length}개 선택`}</Text>
-        </GHPressable>
+          <FullButton
+            type="fill"
+            label={`여행지 ${selectedIds.length}개 선택`}
+            onPress={handleComplete}
+          />
+        </View>
       )}
     </View>
   );
@@ -269,8 +269,7 @@ export default function TripsIndex() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.CLOUD },
-  // flexGrow:1 + flexShrink:1 → 버튼 자연 높이 먼저 확보 후 나머지 공간 차지
-  list: { flexGrow: 1, flexShrink: 1 },
+  list: { flex: 1 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   headerTitleContainer: {
     paddingHorizontal: 22,
@@ -289,7 +288,10 @@ const styles = StyleSheet.create({
     color: colors.INK,
     fontFamily: "MonoplexKR-Regular",
   },
-  mainTabContainer: { flexDirection: "row", width: "100%" },
+  mainTabContainer: {
+    flexDirection: "row",
+    width: "100%",
+  },
   mainTab: {
     flex: 1,
     alignItems: "center",
@@ -303,7 +305,12 @@ const styles = StyleSheet.create({
     fontFamily: "MonoplexKR-Medium",
   },
   activeMainTabText: { fontFamily: "MonoplexKR-Bold" },
-  filterContainer: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 0 },
+  filterScrollWrapper: { height: 44 },
+  filterContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
   listContent: { paddingBottom: 20 },
   sectionHeader: {
     backgroundColor: colors.CLOUD,
@@ -315,21 +322,10 @@ const styles = StyleSheet.create({
     fontFamily: "MonoplexKR-Bold",
     color: colors.INK,
   },
-  buttonContainer: {
+  buttonWrapper: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    backgroundColor: colors.NAVY,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  buttonText: {
-    color: colors.CREAM,
-    fontSize: 16,
-    textAlign: "center",
-    fontFamily: "MonoplexKR-Regular",
+    backgroundColor: colors.CLOUD,
   },
   errorText: {
     color: colors.NAVY,
