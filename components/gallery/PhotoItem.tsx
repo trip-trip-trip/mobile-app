@@ -3,7 +3,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 
 type PhotoItemProps = {
   image?: string;
-  location: string;
+  location?: string | null;
   date: string;
   num: number;
   day: number;
@@ -20,7 +20,7 @@ export const PhotoItem = ({
     <View style={styles.photoItem}>
       <Image
         source={{
-          uri: "https://mywebring.com/wp-content/uploads/2025/04/img-3.jpg",
+          uri: image,
         }}
         style={styles.image}
       />
