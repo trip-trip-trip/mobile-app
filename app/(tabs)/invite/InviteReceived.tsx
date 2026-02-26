@@ -7,12 +7,13 @@ import InviteCard from "@/components/invite/InviteCard";
 import { colors } from "@/constants/colors";
 import { acceptInvite, getInviteInfo } from "@/api/invite";
 import { isAxiosError } from "axios";
+import type { InviteInfo } from "@/types/invite";
 
 export default function InviteReceivedScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
 
-  const [inviteData, setInviteData] = useState<any>(null);
+  const [inviteData, setInviteData] = useState<InviteInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,10 +21,9 @@ export default function InviteReceivedScreen() {
       if (!code) return;
       try {
         setLoading(true);
-        const data = await getInviteInfo(code); // 정보 조회 API 호출
+        const data = await getInviteInfo(code);
         setInviteData(data);
-      } catch (error) {
-        console.error("초대 정보 로드 실패:", error);
+      } catch {
         Alert.alert("유효하지 않은 초대", "링크가 만료되었거나 코드가 잘못되었습니다.");
       } finally {
         setLoading(false);
@@ -41,7 +41,6 @@ export default function InviteReceivedScreen() {
 
     try {
       await acceptInvite(code);
-      Alert.alert("성공", "여행에 성공적으로 참여했습니다!");
       router.replace("/(tabs)/gallery");
     } catch (error) {
       if (isAxiosError(error)) {
@@ -51,6 +50,10 @@ export default function InviteReceivedScreen() {
       }
       Alert.alert("오류", "잠시 후 다시 시도해주세요.");
     }
+  };
+
+  const handleDecline = () => {
+    router.back();
   };
 
   if (loading) {
@@ -68,8 +71,12 @@ export default function InviteReceivedScreen() {
         backgroundColor={colors.CREAM}
         labelColor={colors.NAVY}
       />
-      {/* data를 넘겨줘서 카드가 정보를 그리게 함 */}
-      <InviteCard type="received" onAccept={handleAccept} data={inviteData} />
+      <InviteCard
+        type="received"
+        onAccept={handleAccept}
+        onDecline={handleDecline}
+        data={inviteData ?? undefined}
+      />
     </View>
   );
 }
