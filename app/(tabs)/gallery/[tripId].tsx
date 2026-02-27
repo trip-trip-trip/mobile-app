@@ -63,6 +63,7 @@ export default function Album() {
 
   const albumTitleData = useMemo(
     () => ({
+      id: tripId,
       isTraveling: true,
       title: album?.title ?? "",
       place: "",
@@ -72,7 +73,7 @@ export default function Album() {
       shots: mediaData.reduce((acc, d) => acc + d.photos.length, 0),
       video: mediaData.reduce((acc, d) => acc + d.videos.length, 0),
     }),
-    [album?.title, album?.startDate, album?.endDate, mediaData]
+    [tripId, album?.title, album?.startDate, album?.endDate, mediaData]
   );
 
   const currentDay = mediaData[activeIndex];

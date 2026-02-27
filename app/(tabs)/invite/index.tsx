@@ -1,83 +1,105 @@
-import React from "react";
-import { View, Alert, Share } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Alert, Share, ActivityIndicator } from "react-native";
 import Header from "@/components/Header";
 import InviteCard from "@/components/invite/InviteCard";
 import { colors } from "@/constants/colors";
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import * as Clipboard from "expo-clipboard";
-import { createInvite } from "@/api/invite";
-import { getActiveTrips } from "@/api/trip";
-import { useLocalSearchParams } from "expo-router";
+import { createInvite, getInviteInfo } from "@/api/invite";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import type { InviteInfo } from "@/types/invite";
 
 export default function InviteIndexScreen() {
-const params = useLocalSearchParams();
-  console.log("🔗 InviteIndexScreen에 들어온 전체 params:", params);console.log("🔗 InviteIndexScreen에 들어온 전체 params:", params);
-const paramTripId = params.tripId;
+  const params = useLocalSearchParams<{ tripId?: string }>();
+  const router = useRouter();
+  const tripId = params.tripId ? Number(params.tripId) : null;
 
-  const getInviteLink = async () => {
-  let targetTripId: number;
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  try {
-    // 1. 파라미터로 넘어온 tripId가 있는지 최우선으로 확인
-    if (paramTripId) {
-      targetTripId = Number(paramTripId);
-      console.log("📍 전달받은 tripId 사용:", targetTripId);
-    } else {
-      // 파라미터가 없을 때만 서버에 물어봄
-      const response = await getActiveTrips();
-      const trips = response?.trip || [];
-      
-      if (trips.length === 0) {
-        console.log("서버에 진행 중인 여행이 없음");
-        // 여기서 에러를 내거나 유저에게 알림을 줘야 함
-        throw new Error("초대할 수 있는 여행이 없습니다.");
+  useEffect(() => {
+    const goBack = () => {
+      if (tripId) {
+        router.replace(`/(tabs)/gallery/${tripId}` as any);
       } else {
-        const activeTrip = trips.find((t: any) => t.status === "ACTIVE") || trips[0];
-        targetTripId = activeTrip.id;
+        router.replace("/(tabs)/gallery");
       }
+    };
+
+    const initInvite = async () => {
+      if (!tripId) {
+        Alert.alert("오류", "초대할 여행 정보가 없습니다.", [
+          { text: "확인", onPress: goBack },
+        ]);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const { inviteCode: code } = await createInvite(tripId);
+        setInviteCode(code);
+        const info = await getInviteInfo(code);
+        setInviteInfo(info);
+      } catch {
+        Alert.alert("오류", "초대 코드 생성에 실패했습니다.", [
+          { text: "확인", onPress: goBack },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initInvite();
+  }, [tripId]);
+
+  const handleBack = () => {
+    if (tripId) {
+      router.replace(`/(tabs)/gallery/${tripId}` as any);
+    } else {
+      router.replace("/(tabs)/gallery");
     }
+  };
 
-    // 2. 서버에 초대 코드 요청 (이제 targetTripId는 39가 될 거야)
-    const { inviteCode } = await createInvite(targetTripId);
-    return `tripshot://invite/InviteReceived?code=${inviteCode}`;
-
-  } catch (err) {
-    console.log("❌ 초대 링크 생성 실패:", err);
-    // 여기서 Alert을 띄워주면 좋아
-    return null; 
-  }
-};
+  const getInviteLink = () =>
+    inviteCode ? `tripshot://invite/InviteReceived?code=${inviteCode}` : null;
 
   const handleCopyLink = async () => {
-    const url = await getInviteLink();
-    if (url) {
-      await Clipboard.setStringAsync(url);
-      Alert.alert("복사 완료", `초대 링크가 복사되었습니다.\n${url}`);
-    }
+    const url = getInviteLink();
+    if (!url) return;
+    await Clipboard.setStringAsync(url);
+    Alert.alert("복사 완료", "초대 링크가 클립보드에 복사되었습니다.");
   };
 
   const handleKakaoShare = async () => {
-    const url = await getInviteLink();
-    if (url) {
-      // 카카오톡이나 다른 앱으로 공유 시에도 이 URL이 전달됨
-      await Share.share({
-        message: `[TripShot] 신나는 여행에 초대합니다!\n링크를 눌러 참여하세요:\n${url}`,
-      });
-    }
+    const url = getInviteLink();
+    if (!url) return;
+    await Share.share({
+      message: `[TripShot] 신나는 여행에 초대합니다!\n링크를 눌러 참여하세요:\n${url}`,
+    });
   };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.CREAM }}>
+        <ActivityIndicator size="large" color={colors.NAVY} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.CREAM }}>
-      <Header 
-        label="친구 초대" 
-        leftIcon={<GoBackIcon />} 
-        backgroundColor={colors.CREAM} 
-        labelColor={colors.NAVY} 
+      <Header
+        label="친구 초대"
+        leftIcon={<GoBackIcon onPress={handleBack} />}
+        backgroundColor={colors.CREAM}
+        labelColor={colors.NAVY}
       />
-      <InviteCard 
-        type="sent" 
-        onCopyLink={handleCopyLink} 
-        onKakaoShare={handleKakaoShare} 
+      <InviteCard
+        type="sent"
+        onCopyLink={handleCopyLink}
+        onKakaoShare={handleKakaoShare}
+        data={inviteInfo ?? undefined}
       />
     </View>
   );
