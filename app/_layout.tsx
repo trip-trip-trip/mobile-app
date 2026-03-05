@@ -1,12 +1,12 @@
+import queryClient from "@/api/queryClient";
+import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
+import useDeviceToken from "@/hooks/useDeviceToken";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import queryClient from "@/api/queryClient";
-import useDeviceToken from "@/hooks/useDeviceToken";
-import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -50,6 +50,7 @@ export default function RootLayout() {
     "MonoplexKR-SemiBoldItalic": require("../assets/fonts/MonoplexKR-SemiBoldItalic.ttf"),
     "MonoplexKR-Bold": require("../assets/fonts/MonoplexKR-Bold.ttf"),
     "MonoplexKR-BoldItalic": require("../assets/fonts/MonoplexKR-BoldItalic.ttf"),
+    "Orbit-Regular": require("../assets/fonts/Orbit-Regular.ttf"),
   });
 
   useEffect(() => {

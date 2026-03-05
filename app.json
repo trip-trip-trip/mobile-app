@@ -10,12 +10,9 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "com.anonymous.tripshot"
-
     },
-   "android": {
-      "googleServicesFile": "./google-services.json",
+    "android": {
       "package": "com.anonymous.tripshot",
       "intentFilters": [
         {
@@ -78,7 +75,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

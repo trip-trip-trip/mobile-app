@@ -1,17 +1,18 @@
+import LockIcon from "@/assets/icons/lock.svg";
 import { AlbumTitle } from "@/components/gallery/AlbumTitle";
 import { DayLabel } from "@/components/gallery/DayLabel";
 import { PhotoItem } from "@/components/gallery/PhotoItem";
 import Header from "@/components/Header";
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import { colors } from "@/constants/colors";
+import { useReels } from "@/hooks/queries/gallery/useReels"; // 네가 만든 경로로 맞춰
 // 사진 저장 관련 라이브러리
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import ViewShot from "react-native-view-shot";
-
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
@@ -20,15 +21,18 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
+import ViewShot from "react-native-view-shot";
 
 import PhotoDetailModal from "@/components/gallery/PhotoDetailModal";
 import { VideoThumbItem } from "@/components/gallery/VideoThumbItem";
 import { useTripAlbumQuery } from "@/hooks/queries/gallery/useTripDetail";
-import type { DayMedia, TripDay } from "@/types/gallery";
-import { getTodayYmd, isCompletedTrip } from "@/utils/date";
+import type { DayMedia, DetailMediaItem, TripDay } from "@/types/gallery";
+import { getNextDay, getTodayYmd, isCompletedTrip } from "@/utils/date";
 import { formatCoordLabelDms } from "@/utils/location";
+import { BlurView } from "expo-blur";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -39,11 +43,14 @@ export default function Album() {
     selected?.mediaKind === "VIDEO" || selected?.captureType === "VIDEO"
       ? "video"
       : "photo";
-  console.log("미디어종류", selectedKind);
   const [selectedMeta, setSelectedMeta] = useState<{
     date: string;
     dayLabel: string;
   } | null>(null);
+
+  // 사진 상세 모달
+  const [detailItems, setDetailItems] = useState<DetailMediaItem[]>([]);
+  const [detailInitialIndex, setDetailInitialIndex] = useState(0);
 
   const shotRefs = useRef<Record<number, any>>({});
 
@@ -76,8 +83,24 @@ export default function Album() {
     [tripId, album?.title, album?.startDate, album?.endDate, mediaData]
   );
 
+  const endDate = albumTitleData.endDate; // 안전하게 albumTitleData 기준
+  const isCompleted = isCompletedTrip(endDate, getTodayYmd());
+
+  const {
+    status: reelStatus,
+    outputUrl,
+    isPolling,
+    isCreating,
+    retryCreate,
+  } = useReels({
+    tripId,
+    endDate,
+    enabled: true, // 여기서 isCompleted 넣지 말고, 훅이 ready로 알아서 collecting 처리하는 게 깔끔함
+  });
+
   const currentDay = mediaData[activeIndex];
-  console.log("VIDEO", currentDay?.videos);
+  const isTodayCurrentDay = currentDay?.date === getTodayYmd();
+  // console.log("VIDEO", currentDay?.videos);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -122,9 +145,13 @@ export default function Album() {
   };
 
   // 원본 사진/영상 다운
-  const downloadOriginalMedia = async () => {
+  const downloadOriginalMedia = async (item?: {
+    url: string;
+    mediaKind: string;
+  }) => {
     try {
-      if (!selected?.url) {
+      const target = item?.url ? item : selected;
+      if (!target?.url) {
         Alert.alert("실패", "저장할 파일이 없어요.");
         return;
       }
@@ -135,28 +162,24 @@ export default function Album() {
         return;
       }
 
-      // 저장경로
       const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
       if (!baseDir) {
         Alert.alert("실패", "파일 저장 경로를 찾을 수 없어요.");
         return;
       }
 
-      // 파일명 만들기
-      const urlPath = selected.url.split("?")[0];
+      const urlPath = target.url.split("?")[0];
       const fileName = urlPath.split("/").pop() ?? `media_${Date.now()}`;
 
-      // baseDir 끝에 / 보장
       const normalizedBase = baseDir.endsWith("/") ? baseDir : baseDir + "/";
       const localUri = normalizedBase + fileName;
 
-      const download = await FileSystem.downloadAsync(selected.url, localUri);
-
+      const download = await FileSystem.downloadAsync(target.url, localUri);
       await MediaLibrary.saveToLibraryAsync(download.uri);
 
       Alert.alert(
         "저장 완료",
-        selected.mediaKind === "VIDEO"
+        target.mediaKind === "VIDEO"
           ? "영상 저장이 완료됐습니다."
           : "사진 저장이 완료됐습니다."
       );
@@ -170,45 +193,139 @@ export default function Album() {
     // 일자 - day 1, 2, ..
     const dayNum = index + 1;
     const fourPhotos = item.photos.slice(0, 4); // 네컷 캡처
+    const isBlur = item.date === getTodayYmd();
+    const nextDay = getNextDay(item.date);
+
+    const blockIfToday = () => {
+      if (isBlur) {
+        Alert.alert("잠금 상태", "오늘 촬영한 사진은 아직 볼 수 없어요.");
+        return true;
+      }
+      return false;
+    };
 
     return (
-      <View style={styles.dayPage}>
+      <View style={isBlur ? styles.blur : styles.dayPage}>
         <DayLabel
           dayNum={dayNum}
           date={item.date}
-          onDownload={downloadFourCut}
+          onDownload={() => {
+            if (isBlur) {
+              Alert.alert(
+                "현상 미완료",
+                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+              );
+              return;
+            }
+            downloadFourCut();
+          }}
         />
 
-        <ViewShot
-          ref={(r) => {
-            shotRefs.current[index] = r;
-          }}
-          options={{ format: "png", quality: 1 }}
-          style={styles.photoGrid}
-        >
-          {fourPhotos.map((photo, idx) => {
-            const dayLabel = `D${dayNum}-#${String(idx + 1).padStart(2, "0")}`;
+        <View style={styles.gridWrapper}>
+          <ViewShot
+            ref={(r) => {
+              shotRefs.current[index] = r;
+            }}
+            options={{ format: "png", quality: 1 }}
+            style={styles.photoGrid}
+          >
+            {fourPhotos.map((photo, idx) => {
+              const dayLabel = `D${dayNum}-#${String(idx + 1).padStart(
+                2,
+                "0"
+              )}`;
 
-            return (
-              <View key={photo.id} style={styles.photoItem}>
-                <Pressable
-                  onPress={() => {
-                    setSelected(photo);
-                    setSelectedMeta({ date: item.date, dayLabel });
-                  }}
-                >
-                  <PhotoItem
-                    date={item.date}
-                    day={dayNum}
-                    num={index + 1}
-                    location={formatCoordLabelDms(photo.lat, photo.lng)}
-                    image={photo.url}
-                  />
-                </Pressable>
-              </View>
-            );
-          })}
-        </ViewShot>
+              return (
+                <View key={photo.id} style={styles.photoItem}>
+                  <Pressable
+                    onPress={() => {
+                      if (blockIfToday()) return;
+
+                      // ✅ 그날 사진 전체(네컷만 말고 전체로 하려면 item.photos 그대로)
+                      const dayItems: DetailMediaItem[] = item.photos.map(
+                        (p, i) => {
+                          const dayLabel = `D${dayNum}-#${String(
+                            i + 1
+                          ).padStart(2, "0")}`;
+                          return {
+                            id: p.id,
+                            mediaKind: "PHOTO",
+                            url: p.url,
+                            comment: p.comment,
+                            date: item.date,
+                            dayLabel,
+                            lat: p.lat,
+                            lng: p.lng,
+                          };
+                        }
+                      );
+
+                      setDetailItems(dayItems);
+                      setDetailInitialIndex(idx); // 지금 누른 사진의 idx
+
+                      // 기존 상태도 유지해도 되고(visible 조건 때문에), 사실상 이젠 없어도 됨
+                      setSelected(item.photos[idx]);
+                      setSelectedMeta({
+                        date: item.date,
+                        dayLabel: dayItems[idx].dayLabel,
+                      });
+                    }}
+                  >
+                    <PhotoItem
+                      date={item.date}
+                      day={dayNum}
+                      num={index + 1}
+                      location={formatCoordLabelDms(photo.lat, photo.lng)}
+                      image={photo.url}
+                    />
+                  </Pressable>
+                </View>
+              );
+            })}
+          </ViewShot>
+
+          {isBlur && (
+            <Pressable
+              style={styles.lockOverlay}
+              onPress={() =>
+                Alert.alert(
+                  "현상 미완료",
+                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+                )
+              }
+            >
+              <BlurView
+                intensity={40}
+                tint="light"
+                style={StyleSheet.absoluteFill}
+              />
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: "rgba(255,255,255,0.4)" },
+                ]}
+              />
+              <LockIcon width={86} height={110} />
+              <Text
+                style={{
+                  fontFamily: "Orbit",
+                  color: colors.CREAM,
+                  backgroundColor: colors.INK,
+                  marginTop: 23,
+                  textAlign: "center",
+                  lineHeight: 16,
+                  paddingVertical: 3,
+                  paddingHorizontal: 7,
+                  fontSize: 15,
+                  fontWeight: 400,
+                }}
+              >
+                {nextDay.year}년 {nextDay.month}월 {nextDay.day}일에 현상이
+                완료돼요
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
     );
   };
@@ -222,10 +339,7 @@ export default function Album() {
         leftIcon={<GoBackIcon />}
       />
       <ScrollView style={styles.safeArea}>
-        <AlbumTitle
-          data={albumTitleData}
-          isTraveling={!isCompletedTrip(albumTitleData.endDate, getTodayYmd())}
-        />
+        <AlbumTitle data={albumTitleData} isTraveling={!isCompleted} />
 
         <View style={styles.sectionSeparator} />
 
@@ -255,23 +369,134 @@ export default function Album() {
         </View>
 
         <View style={styles.videoGrid}>
-          {currentDay?.videos.map((video, idx) => (
-            <View key={video.id} style={styles.videoItem}>
+          {/* 3초 영상 합본 - 완료된 여행일 때만 조회 */}
+          {isCompleted && (
+            <View style={styles.videoItem}>
               <Pressable
                 onPress={() => {
-                  setSelected(video);
-                  setSelectedMeta({
-                    date: currentDay.date,
-                    dayLabel: `D${currentDay.dayNumber}-V${String(
-                      idx + 1
-                    ).padStart(2, "0")}`,
-                  });
+                  if (reelStatus === "queued") {
+                    Alert.alert("영상 생성 중");
+                    return;
+                  }
+
+                  // done
+                  if (!outputUrl) return;
+                  const reelItem: DetailMediaItem[] = [
+                    {
+                      id: -1, // 임시 id
+                      mediaKind: "VIDEO",
+                      url: outputUrl,
+                      comment: null,
+                      date: endDate,
+                      dayLabel: "REEL",
+                      lat: null,
+                      lng: null,
+                    },
+                  ];
+
+                  setDetailItems(reelItem);
+                  setDetailInitialIndex(0);
+                  setSelected({
+                    id: -1,
+                    tripId,
+                    mediaKind: "VIDEO",
+                    captureType: "VIDEO",
+                    comment: null,
+                    url: outputUrl,
+                    uploaderId: 0,
+                    width: null,
+                    height: null,
+                    durationSec: null,
+                    takenAt: new Date().toISOString(),
+                    lat: null,
+                    lng: null,
+                  } as any);
+                  setSelectedMeta({ date: endDate, dayLabel: "REEL" });
                 }}
               >
-                <VideoThumbItem videoUrl={video.url} />
+                <View style={styles.thumbWrap}>
+                  {reelStatus === "done" && outputUrl ? (
+                    <VideoThumbItem videoUrl={outputUrl} />
+                  ) : (
+                    <View style={styles.reelPlaceholder} />
+                  )}
+
+                  {/* 상태 오버레이 */}
+                  {reelStatus !== "none" && reelStatus === "queued" && (
+                    <View style={styles.reelOverlay}>
+                      <>
+                        <ActivityIndicator />
+                        <Text style={styles.reelStatusText}>생성 중..</Text>
+                      </>
+                    </View>
+                  )}
+                </View>
               </Pressable>
             </View>
-          ))}
+          )}
+
+          {/* 기존 day 영상들 */}
+          {currentDay?.videos.map((video, idx) => {
+            const nextDay = getNextDay(currentDay.date);
+            const onPress = () => {
+              if (isTodayCurrentDay) {
+                Alert.alert(
+                  "현상 미완료",
+                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+                );
+                return;
+              }
+              const dayItems: DetailMediaItem[] = currentDay.videos.map(
+                (v, i) => ({
+                  id: v.id,
+                  mediaKind: "VIDEO",
+                  url: v.url,
+                  comment: v.comment,
+                  date: currentDay.date,
+                  dayLabel: `D${currentDay.dayNumber}-V${String(i + 1).padStart(
+                    2,
+                    "0"
+                  )}`,
+                  lat: v.lat,
+                  lng: v.lng,
+                })
+              );
+
+              setDetailItems(dayItems);
+              setDetailInitialIndex(idx);
+              setSelected(video);
+              setSelectedMeta({
+                date: currentDay.date,
+                dayLabel: dayItems[idx].dayLabel,
+              });
+            };
+
+            return (
+              <View key={video.id} style={styles.videoItem}>
+                <Pressable onPress={onPress}>
+                  <View style={styles.thumbWrap}>
+                    <VideoThumbItem videoUrl={video.url} />
+                    {isTodayCurrentDay && (
+                      <View style={styles.blurOverlay}>
+                        <BlurView
+                          intensity={40}
+                          tint="light"
+                          style={StyleSheet.absoluteFill}
+                        />
+                        <View
+                          style={[
+                            StyleSheet.absoluteFill,
+                            { backgroundColor: "rgba(255,255,255,0.35)" },
+                          ]}
+                        />
+                        <LockIcon width={50} height={69} />
+                      </View>
+                    )}
+                  </View>
+                </Pressable>
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
       {/* 사진/영상 세부 페이지 */}
@@ -280,14 +505,11 @@ export default function Album() {
         onClose={() => {
           setSelected(null);
           setSelectedMeta(null);
+          setDetailItems([]);
+          setDetailInitialIndex(0);
         }}
-        mediaKind={selectedKind}
-        mediaUrl={selected?.url ?? ""}
-        date={selectedMeta?.date ?? ""}
-        dayLabel={selectedMeta?.dayLabel ?? ""}
-        lat={selected?.lat ?? null}
-        lng={selected?.lng ?? null}
-        comment={selected?.comment ?? null}
+        items={detailItems}
+        initialIndex={detailInitialIndex}
         onDownload={downloadOriginalMedia}
       />
     </View>
@@ -311,7 +533,11 @@ const styles = StyleSheet.create({
   },
   dayPage: {
     width: SCREEN_WIDTH,
-    flex: 1,
+  },
+  blur: {
+    width: SCREEN_WIDTH,
+    backgroundColor: colors.CLOUD,
+    opacity: 0.9,
   },
   photoGrid: {
     flexDirection: "row",
@@ -323,6 +549,23 @@ const styles = StyleSheet.create({
     width: "50%",
     padding: 0,
   },
+  gridWrapper: {
+    position: "relative",
+  },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbWrap: {
+    position: "relative",
+  },
+  blurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
   videoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -333,6 +576,28 @@ const styles = StyleSheet.create({
     width: "50%",
     padding: 2,
   },
+  reelOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  reelPlaceholder: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: colors.INK,
+  },
+  reelStatusText: {
+    marginTop: 10,
+    fontFamily: "Orbit",
+    fontSize: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    borderRadius: 999,
+    color: colors.INK,
+  },
+
   indicatorContainer: {
     flexDirection: "row",
     justifyContent: "center",

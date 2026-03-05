@@ -87,3 +87,27 @@ export type TripDetailResponse = {
     days: TripDay[];
   };
 };
+
+export type ReelResult = {
+  status: string;
+  reelId: number;
+  outputUrl: string | null;
+};
+
+export type ReelsResponse<T> = {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  result: T;
+};
+
+export type DetailMediaItem = {
+  id: number;
+  mediaKind: "PHOTO" | "VIDEO";
+  url: string;
+  comment?: string | null;
+  date: string;
+  dayLabel: string;
+  lat?: number | null;
+  lng?: number | null;
+};

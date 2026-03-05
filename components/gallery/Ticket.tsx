@@ -78,24 +78,26 @@ export const Ticket = ({ data }: TicketProps) => {
           width: "1.5%",
           backgroundColor: colors.CLOUD,
           flexDirection: "column",
-          gap: 9,
+          justifyContent: "space-between",
         }}
       >
-        <View style={{ backgroundColor: colors.NAVY, height: 12.9 }}></View>
-        <View style={{ backgroundColor: colors.NAVY, height: 12.9 }}></View>
-        <View style={{ backgroundColor: colors.NAVY, height: 12.9 }}></View>
-        <View style={{ backgroundColor: colors.NAVY, height: 12.9 }}></View>
-        <View style={{ backgroundColor: colors.NAVY, height: 12.9 }}></View>
-        <View style={{ backgroundColor: colors.NAVY, height: 12.9 }}></View>
-        <View style={{ backgroundColor: colors.NAVY, height: 13 }}></View>
+        <View style={{ backgroundColor: colors.NAVY, height: 12.7 }}></View>
+        <View style={{ backgroundColor: colors.NAVY, height: 12.7 }}></View>
+        <View style={{ backgroundColor: colors.NAVY, height: 12.7 }}></View>
+        <View style={{ backgroundColor: colors.NAVY, height: 12.7 }}></View>
+        <View style={{ backgroundColor: colors.NAVY, height: 12.7 }}></View>
+        <View style={{ backgroundColor: colors.NAVY, height: 12.7 }}></View>
+        <View style={{ backgroundColor: colors.NAVY, height: 12.7 }}></View>
       </View>
 
       {/* 촬영하기 버튼 */}
       <Pressable
-        onPress={() => router.push({
-      pathname: "/(tabs)/camera",
-      params: { tripId: data.id } // data에 id가 있다고 가정
-    })}
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/camera",
+            params: { tripId: data.id },
+          })
+        }
         style={styles.ticketLeft}
       >
         <CameraSvg width={46} height={46} />

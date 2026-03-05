@@ -55,7 +55,6 @@ const styles = StyleSheet.create({
   profileWrapper: {
     marginRight: -7,
     overflow: "hidden",
-    backgroundColor: colors.CLOUD,
   },
   profile: {
     borderRadius: 999,

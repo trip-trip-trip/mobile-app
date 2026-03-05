@@ -23,6 +23,8 @@ export default function Gallery() {
   const hasActive = Boolean(activeTripInfo);
   const completedTrips = data?.completedTrips ?? [];
 
+  const activeTripId = activeTripInfo?.id ?? 0;
+
   // 새로운 여행 시작하기 버튼 클릭시
   const handlePressStartTrip = () => {
     router.push("/(tabs)/trip");
