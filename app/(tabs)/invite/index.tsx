@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Alert, Share } from "react-native";
 import Header from "@/components/Header";
 import InviteCard from "@/components/invite/InviteCard";
@@ -8,45 +8,42 @@ import * as Clipboard from "expo-clipboard";
 import { createInvite } from "@/api/invite";
 import { getActiveTrips } from "@/api/trip";
 import { useLocalSearchParams } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { getActiveTripData } from "@/api/gallery";
 
 export default function InviteIndexScreen() {
-const params = useLocalSearchParams();
-  console.log("🔗 InviteIndexScreen에 들어온 전체 params:", params);console.log("🔗 InviteIndexScreen에 들어온 전체 params:", params);
-const paramTripId = params.tripId;
+  const { tripId: paramTripId } = useLocalSearchParams<{ tripId: string }>();
+
+  // 1. 현재 초대하려는 여행의 실제 데이터를 가져옴
+  const { data: tripStatus } = useQuery({
+    queryKey: ["activeTripData"],
+    queryFn: getActiveTripData,
+  });
+
+  // 2. 현재 선택된 tripId에 해당하는 여행 정보를 찾음
+  const activeTripData = tripStatus?.trip?.find(
+    (t: any) => t.id === Number(paramTripId)
+  ) || tripStatus?.trip?.[0];
 
   const getInviteLink = async () => {
-  let targetTripId: number;
-
-  try {
-    // 1. 파라미터로 넘어온 tripId가 있는지 최우선으로 확인
-    if (paramTripId) {
-      targetTripId = Number(paramTripId);
-      console.log("📍 전달받은 tripId 사용:", targetTripId);
-    } else {
-      // 파라미터가 없을 때만 서버에 물어봄
-      const response = await getActiveTrips();
-      const trips = response?.trip || [];
-      
-      if (trips.length === 0) {
-        console.log("서버에 진행 중인 여행이 없음");
-        // 여기서 에러를 내거나 유저에게 알림을 줘야 함
-        throw new Error("초대할 수 있는 여행이 없습니다.");
+    let targetTripId: number;
+    try {
+      if (paramTripId) {
+        targetTripId = Number(paramTripId);
+      } else if (activeTripData) {
+        targetTripId = activeTripData.id;
       } else {
-        const activeTrip = trips.find((t: any) => t.status === "ACTIVE") || trips[0];
-        targetTripId = activeTrip.id;
+        throw new Error("여행 정보가 없습니다.");
       }
+
+      const { inviteCode } = await createInvite(targetTripId);
+      return `tripshot://invite/InviteReceived?code=${inviteCode}`;
+    } catch (err) {
+      console.error("초대 링크 생성 실패:", err);
+      Alert.alert("오류", "초대 링크를 생성할 수 없습니다.");
+      return null;
     }
-
-    // 2. 서버에 초대 코드 요청 (이제 targetTripId는 39가 될 거야)
-    const { inviteCode } = await createInvite(targetTripId);
-    return `tripshot://invite/InviteReceived?code=${inviteCode}`;
-
-  } catch (err) {
-    console.log("❌ 초대 링크 생성 실패:", err);
-    // 여기서 Alert을 띄워주면 좋아
-    return null; 
-  }
-};
+  };
 
   const handleCopyLink = async () => {
     const url = await getInviteLink();
@@ -59,9 +56,8 @@ const paramTripId = params.tripId;
   const handleKakaoShare = async () => {
     const url = await getInviteLink();
     if (url) {
-      // 카카오톡이나 다른 앱으로 공유 시에도 이 URL이 전달됨
       await Share.share({
-        message: `[TripShot] 신나는 여행에 초대합니다!\n링크를 눌러 참여하세요:\n${url}`,
+        message: `[TripShot] '${activeTripData?.title || "여행"}'에 초대합니다!\n링크를 눌러 참여하세요:\n${url}`,
       });
     }
   };
@@ -74,10 +70,12 @@ const paramTripId = params.tripId;
         backgroundColor={colors.CREAM} 
         labelColor={colors.NAVY} 
       />
+      {/* 3. data prop에 실제 여행 데이터를 전달 */}
       <InviteCard 
         type="sent" 
         onCopyLink={handleCopyLink} 
         onKakaoShare={handleKakaoShare} 
+        data={activeTripData}
       />
     </View>
   );

@@ -7,6 +7,7 @@ import FullButton from "@/components/FullButton";
 import { BlurView } from "expo-blur";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Location from "expo-location";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
@@ -34,6 +35,7 @@ import { uploadMedia } from "@/api/media";
 import { useQuery } from "@tanstack/react-query";
 import { getActiveTripData } from "@/api/gallery";
 import { getTripAlbumDetail } from "@/api/album";
+import type { TripDetail, TripDetailResponse } from "@/types/gallery";
 
 const CameraScreen = () => {
   const cameraRef = useRef<CameraView>(null);
@@ -44,6 +46,7 @@ const CameraScreen = () => {
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [capturedLocation, setCapturedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isBlurDetected, setIsBlurDetected] = useState(false);
 
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -76,6 +79,7 @@ const { data: tripDetail, refetch: refetchTripDetail } = useQuery({
   queryKey: ["tripAlbumDetail", targetTripId],
   queryFn: () => getTripAlbumDetail(targetTripId as number),
   enabled: Number.isFinite(targetTripId) && Number(targetTripId) > 0,
+  select: (data: TripDetailResponse): TripDetail => data.result,
 });
 
 const tripDays = useMemo(() => tripDetail?.days ?? [], [tripDetail?.days]);
@@ -232,13 +236,36 @@ useFocusEffect(
   const handleShutterPress = async () => {
     if (!cameraRef.current || !isCameraReady) return;
 
+    const getCurrentCoordinates = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return null;
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        const { latitude, longitude } = position.coords;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+        return { lat: latitude, lng: longitude };
+      } catch (error) {
+        console.error("Location capture error:", error);
+        return null;
+      }
+    };
+
     if (mode === "photo") {
       try {
         const shakePromise = measureShakeWindow();
-        const photo = await cameraRef.current.takePictureAsync();
+        const [photo, location] = await Promise.all([
+          cameraRef.current.takePictureAsync(),
+          getCurrentCoordinates(),
+        ]);
         const shakeScore = await shakePromise;
         setIsBlurDetected(shakeScore > 0.25);
         setCapturedUri(photo.uri);
+        setCapturedLocation(location);
       } catch (error) {
         console.error("Photo capture error:", error);
       }
@@ -247,7 +274,9 @@ useFocusEffect(
       try {
         setIsRecording(true);
         const video = await cameraRef.current.recordAsync({ maxDuration: 3 });
+        const location = await getCurrentCoordinates();
         if (video?.uri) setCapturedUri(video.uri);
+        setCapturedLocation(location);
       } catch (error) {
         console.error("Video recording error:", error);
       } finally {
@@ -266,7 +295,14 @@ useFocusEffect(
       return;
     }
 
-    await uploadMedia(mode, targetTripId, capturedUri, comment);
+    await uploadMedia(
+      mode,
+      targetTripId,
+      capturedUri,
+      comment,
+      capturedLocation?.lat ?? null,
+      capturedLocation?.lng ?? null
+    );
 
     // 저장 성공 시 알림
     Alert.alert("성공", "추억이 안전하게 저장되었습니다!", [
@@ -280,6 +316,7 @@ useFocusEffect(
           // 초기화 후 갤러리로 이동
           setCapturedUri(null);
           setComment("");
+          setCapturedLocation(null);
           setIsBlurDetected(false);
           router.push("/(tabs)/gallery");
         } 
@@ -297,6 +334,7 @@ useFocusEffect(
   const handleRetake = () => {
     setCapturedUri(null);
     setComment("");
+    setCapturedLocation(null);
     setIsBlurDetected(false);
   };
 
