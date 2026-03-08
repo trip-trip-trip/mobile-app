@@ -4,57 +4,41 @@ import { colors } from "@/constants/colors";
 import { StyleSheet, Text, View } from "react-native";
 import InviteLinkIcon from "@/assets/icons/invitelink.svg";
 import KakaoIcon from "@/assets/icons/kakaoicon.svg";
-import * as Linking from "expo-linking";
-import { router } from "expo-router";
- // 테스트용 딥링크 열기
+import type { InviteInfo } from "@/types/invite";
+
 type Props = {
   type: "sent" | "received";
   onCopyLink?: () => void;
-  onKakaoShare?: () => void; 
+  onKakaoShare?: () => void;
   onAccept?: () => void;
-  data?: any; // 추가: 서버 데이터 수신용
+  onDecline?: () => void;
+  data?: InviteInfo;
 };
 
-// InviteCard.tsx 내부 수정 부분
-const InviteCard = ({ type, onCopyLink, onKakaoShare, onAccept, data }: Props) => {
-  // 서버 응답 구조(tripStatus 혹은 inviteInfo)에 맞춰 매핑
+const InviteCard = ({ type, onCopyLink, onKakaoShare, onAccept, onDecline, data }: Props) => {
   const title = data?.title || "새로운 여행 초대";
-  const dateText = data?.startDate ? `${data.startDate} - ${data.endDate}` : "날짜 정보 없음";
-  
-  // 상태 라벨 결정 (ACTIVE 여부 확인)
-  const statusLabel = data?.status === "ACTIVE" || data?.isOngoing ? "지금 여행중" : "지난 여행";
-
-
-  const friends = data?.inviteesNameList || data?.members || ["참여자"];
+  const placesText = data?.places?.join(" · ") || "장소 정보 없음";
 
   return (
     <View style={styles.card}>
-      <Text style={[
-        styles.badge, 
-        (data?.status === "COMPLETED" || data?.isOngoing === false) && { color: colors.NAVY, borderColor: colors.NAVY }
-      ]}>
-        {statusLabel}
-      </Text>
+      <Text style={styles.badge}>여행 초대</Text>
 
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.date}>{dateText}</Text>
+      <Text style={styles.date}>{placesText}</Text>
 
       <View style={styles.divider} />
 
       <View style={styles.friendRow}>
-        {friends.slice(0, 3).map((name: string, idx: number) => (
-          <View key={idx} style={styles.friendItem}>
-            {/* 프로필 이미지가 URL로 오면 Image로, 없으면 DefaultProfile */}
-            {data?.inviteesProfileImgList?.[idx] ? (
-              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#ddd', overflow: 'hidden' }}>
-                 {/* 이미지 컴포넌트 추가 가능 */}
-              </View>
-            ) : (
-              <DefaultProfile width={60} height={60} />
-            )}
-            <Text style={styles.friendName}>{typeof name === 'string' ? name : "친구"}</Text>
+        <View style={styles.friendItem}>
+          <DefaultProfile width={60} height={60} />
+          <Text style={styles.friendName}>{data?.inviterName || "초대자"}</Text>
+        </View>
+        {data?.participantCount != null && data.participantCount > 1 && (
+          <View style={styles.friendItem}>
+            <DefaultProfile width={60} height={60} />
+            <Text style={styles.friendName}>+{data.participantCount - 1}명</Text>
           </View>
-        ))}
+        )}
       </View>
       
       <View style={styles.buttonWrapper}>
@@ -62,13 +46,11 @@ const InviteCard = ({ type, onCopyLink, onKakaoShare, onAccept, data }: Props) =
           <>
             <FullButton icon={<InviteLinkIcon />} type="outlined" label="초대 링크 복사" onPress={onCopyLink} />
             <FullButton icon={<KakaoIcon />} type="kakao" label="카카오톡 초대" onPress={onKakaoShare} />
-            
           </>
         ) : (
           <>
             <FullButton type="fill" label="여행 참여하기!" onPress={onAccept} />
-            <FullButton type="outlined" label="초대 거절하기" />
-             
+            <FullButton type="outlined" label="초대 거절하기" onPress={onDecline} />
           </>
         )}
       </View>
