@@ -8,7 +8,7 @@ export const getTripAlbumDetail = async (
   const { data } = await axiosInstance.get<TripDetailResponse>(
     `/trips/${tripId}`
   );
-  console.log("앨범 상세:", data.result.days[0]);
+  // console.log("앨범 상세:", data.result.days[0]);
   return data;
 };
 
@@ -17,11 +17,11 @@ export const getTripAlbumDays = async (tripId: number): Promise<TripDay[]> => {
   return result.result.days;
 };
 
-const assertOk = async <T>(res: Response): Promise<T> => {
-  const data = (await res.json().catch(() => null)) as T | null;
-  if (!res.ok || !data) throw new Error(`API Error: ${res.status}`);
-  return data;
-};
+// const assertOk = async <T>(res: Response): Promise<T> => {
+//   const data = (await res.json().catch(() => null)) as T | null;
+//   if (!res.ok || !data) throw new Error(`API Error: ${res.status}`);
+//   return data;
+// };
 
 // POST: 릴스 생성
 export async function postCreateReel(tripId: number) {

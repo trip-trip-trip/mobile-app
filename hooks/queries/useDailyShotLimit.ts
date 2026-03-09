@@ -19,8 +19,8 @@ export const useDailyShotLimit = (tripId: number) => {
   const remaining = Math.max(0, DAILY_LIMIT - todayPhotoCount);
   const isLimitReached = todayPhotoCount >= DAILY_LIMIT;
 
-  console.log("오늘 촬영 횟수", todayPhotoCount);
-  console.log("tripID", tripId);
+  // console.log("오늘 촬영 횟수", todayPhotoCount);
+  // console.log("tripID", tripId);
 
   return {
     todayPhotoCount,

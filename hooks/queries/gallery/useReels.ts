@@ -5,7 +5,13 @@ import { getReel, postCreateReel } from "@/api/album";
 import type { ReelResult } from "@/types/gallery";
 import { getTodayYmd, isCompletedTrip } from "@/utils/date";
 
-type ClientReelStatus = "collecting" | "queued" | "done" | "failed" | "none";
+type ClientReelStatus =
+  | "collecting"
+  | "queued"
+  | "done"
+  | "failed"
+  | "none"
+  | "rendering";
 
 type Params = {
   tripId: number;
@@ -45,7 +51,7 @@ export const useReels = ({
   });
 
   /*
-  여행 완료 + reelId 없음 → 생성
+  여행 완료 && reelId 없음 -> 생성
   */
 
   useEffect(() => {
@@ -57,7 +63,7 @@ export const useReels = ({
   }, [canRun, reelId, tripId, createMutation]);
 
   /*
-  GET (polling)
+  GET
   */
 
   const reelQuery = useQuery({
@@ -91,17 +97,17 @@ export const useReels = ({
 
     if (server === "done") return "done";
     if (server === "failed") return "failed";
-    if (server === "rendering") return "queued"; // 혹은 "rendering"을 따로 두고 UI 문구만 바꾸기
+    if (server === "rendering") return "rendering";
     if (server === "queued") return "queued";
     if (server === "none") return "none";
 
-    // if (!server) return createMutation.isPending ? "queued" : "none";
+    if (!server) return createMutation.isPending ? "queued" : "none";
 
     return "none";
   })();
 
   const outputUrl =
-    status === "done" ? reelQuery.data?.outputUrl ?? null : null;
+    status === "done" ? (reelQuery.data?.outputUrl ?? null) : null;
 
   return {
     canRun,

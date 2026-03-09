@@ -11,6 +11,9 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState } from "react";
+// 사진 공유
+import * as Sharing from "expo-sharing";
+
 import {
   ActivityIndicator,
   Alert,
@@ -39,10 +42,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function Album() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selected, setSelected] = useState<DayMedia | null>(null);
-  const selectedKind =
-    selected?.mediaKind === "VIDEO" || selected?.captureType === "VIDEO"
-      ? "video"
-      : "photo";
+  // const selectedKind =
+  //   selected?.mediaKind === "VIDEO" || selected?.captureType === "VIDEO"
+  //     ? "video"
+  //     : "photo";
   const [selectedMeta, setSelectedMeta] = useState<{
     date: string;
     dayLabel: string;
@@ -89,9 +92,9 @@ export default function Album() {
   const {
     status: reelStatus,
     outputUrl,
-    isPolling,
-    isCreating,
-    retryCreate,
+    // isPolling,
+    // isCreating,
+    // retryCreate,
   } = useReels({
     tripId,
     endDate,
@@ -108,39 +111,63 @@ export default function Album() {
     if (currentIndex !== activeIndex) setActiveIndex(currentIndex);
   };
 
+  // 네컷 캡처(이미지화)
+  const captureFourCut = async () => {
+    const ref = shotRefs.current[activeIndex];
+
+    if (!ref) {
+      throw new Error("CAPTURE_REF_NOT_FOUND");
+    }
+
+    const uri = await ref.capture?.();
+
+    if (!uri) {
+      throw new Error("CAPTURE_FAILED");
+    }
+
+    return uri;
+  };
+
   // 네컷 다운
   const downloadFourCut = async () => {
     try {
-      const ref = shotRefs.current[activeIndex];
-      if (!ref) {
-        Alert.alert("실패", "저장할 이미지를 찾을 수 없어요.");
-        return;
-      }
+      const uri = await captureFourCut();
 
-      // 권한 요청
       const perm = await MediaLibrary.requestPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert("권한 필요", "사진 저장 권한이 필요합니다.");
+        Alert.alert("권한 없음", "사진 저장 권한이 필요합니다.");
         return;
       }
 
-      // 캡처
-      const uri = await ref.capture?.();
-      if (!uri) {
-        Alert.alert("실패", "이미지 저장 중 오류가 발생했습니다.");
-        return;
-      }
-
-      // 저장
       await MediaLibrary.saveToLibraryAsync(uri);
 
-      // 저장 성공
       Alert.alert("저장 완료", "네컷 이미지가 앨범에 저장됐어요");
     } catch (e) {
       console.log("download error:", e);
-
-      // 저장 실패
       Alert.alert("저장 실패", "이미지 저장에 실패했습니다.");
+    }
+  };
+
+  // 네컷 공유
+  const shareFourCut = async () => {
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+
+      if (!isAvailable) {
+        Alert.alert("공유 실패", "사진 공유에 실패했습니다.");
+        return;
+      }
+
+      const uri = await captureFourCut();
+
+      await Sharing.shareAsync(uri, {
+        mimeType: "image/png",
+        dialogTitle: "네컷 이미지 공유",
+        UTI: "public.png",
+      });
+    } catch (e) {
+      console.log("share error:", e);
+      Alert.alert("공유 실패", "이미지 공유 중 오류가 발생했습니다.");
     }
   };
 
@@ -219,6 +246,17 @@ export default function Album() {
             }
             downloadFourCut();
           }}
+          onShare={() => {
+            if (isBlur) {
+              Alert.alert(
+                "현상 미완료",
+                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+              );
+              return;
+            }
+
+            shareFourCut();
+          }}
         />
 
         <View style={styles.gridWrapper}>
@@ -230,10 +268,10 @@ export default function Album() {
             style={styles.photoGrid}
           >
             {fourPhotos.map((photo, idx) => {
-              const dayLabel = `D${dayNum}-#${String(idx + 1).padStart(
-                2,
-                "0"
-              )}`;
+              // const dayLabel = `D${dayNum}-#${String(idx + 1).padStart(
+              //   2,
+              //   "0"
+              // )}`;
 
               return (
                 <View key={photo.id} style={styles.photoItem}>
@@ -241,7 +279,7 @@ export default function Album() {
                     onPress={() => {
                       if (blockIfToday()) return;
 
-                      // ✅ 그날 사진 전체(네컷만 말고 전체로 하려면 item.photos 그대로)
+                      // 그날 사진 전체
                       const dayItems: DetailMediaItem[] = item.photos.map(
                         (p, i) => {
                           const dayLabel = `D${dayNum}-#${String(
@@ -263,7 +301,6 @@ export default function Album() {
                       setDetailItems(dayItems);
                       setDetailInitialIndex(idx); // 지금 누른 사진의 idx
 
-                      // 기존 상태도 유지해도 되고(visible 조건 때문에), 사실상 이젠 없어도 됨
                       setSelected(item.photos[idx]);
                       setSelectedMeta({
                         date: item.date,
@@ -274,7 +311,7 @@ export default function Album() {
                     <PhotoItem
                       date={item.date}
                       day={dayNum}
-                      num={index + 1}
+                      num={idx + 1}
                       location={formatCoordLabelDms(photo.lat, photo.lng)}
                       image={photo.url}
                     />
@@ -305,7 +342,7 @@ export default function Album() {
                   { backgroundColor: "rgba(255,255,255,0.4)" },
                 ]}
               />
-              <LockIcon width={86} height={110} />
+              <LockIcon width={76} height={95} />
               <Text
                 style={{
                   fontFamily: "Orbit",
@@ -316,7 +353,7 @@ export default function Album() {
                   lineHeight: 16,
                   paddingVertical: 3,
                   paddingHorizontal: 7,
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 400,
                 }}
               >
@@ -370,14 +407,14 @@ export default function Album() {
 
         <View style={styles.videoGrid}>
           {/* 3초 영상 합본 - 완료된 여행일 때만 조회 */}
-          {isCompleted && (
+          {isCompleted && reelStatus === "done" && (
             <View style={styles.videoItem}>
               <Pressable
                 onPress={() => {
-                  if (reelStatus === "queued") {
-                    Alert.alert("영상 생성 중");
-                    return;
-                  }
+                  // if (reelStatus === "queued") {
+                  //   Alert.alert("영상 생성 중");
+                  //   return;
+                  // }
 
                   // done
                   if (!outputUrl) return;
@@ -422,7 +459,7 @@ export default function Album() {
                   )}
 
                   {/* 상태 오버레이 */}
-                  {reelStatus !== "none" && reelStatus === "queued" && (
+                  {reelStatus === "queued" && (
                     <View style={styles.reelOverlay}>
                       <>
                         <ActivityIndicator />
