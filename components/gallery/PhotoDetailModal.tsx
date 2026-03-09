@@ -1,31 +1,23 @@
 import PhotoDetailView from "@/components/gallery/PhotoDetailUI";
+import { DetailMediaItem } from "@/types/gallery";
 import { Modal, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  mediaKind: string;
-  mediaUrl: string;
-  date: string;
-  dayLabel: string;
-  lat?: number | null;
-  lng?: number | null;
-  comment?: string | null;
 
-  onDownload?: () => void;
+  items: DetailMediaItem[]; // 사진들
+  initialIndex: number; // 선택한 사진 index
+
+  onDownload?: (item: DetailMediaItem) => void;
 };
 
 const PhotoDetailModal = ({
   visible,
   onClose,
-  mediaKind,
-  mediaUrl,
-  date,
-  dayLabel,
-  lat,
-  lng,
-  comment,
+  items,
+  initialIndex,
   onDownload,
 }: Props) => {
   return (
@@ -33,13 +25,8 @@ const PhotoDetailModal = ({
       <SafeAreaView style={styles.safe}>
         <View style={styles.container}>
           <PhotoDetailView
-            mediaKind={mediaKind}
-            mediaUrl={mediaUrl}
-            date={date}
-            dayLabel={dayLabel}
-            lat={lat}
-            lng={lng}
-            comment={comment}
+            items={items}
+            initialIndex={initialIndex}
             onClose={onClose}
             onDownload={onDownload}
           />

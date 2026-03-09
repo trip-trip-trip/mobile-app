@@ -10,7 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 
-import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -22,20 +22,22 @@ import {
 } from "react-native";
 
 import CamLines from "@/assets/icons/CamLines.svg";
-import RedBar from "@/assets/icons/RedBar.svg";
-import VideoLines from "@/assets/icons/VideoLines.svg";
 import FilterIcon from "@/assets/icons/filterbutton.svg";
 import PhotoButton from "@/assets/icons/photoButton.svg";
+import RedBar from "@/assets/icons/RedBar.svg";
 import VideoButton from "@/assets/icons/videoButton.svg";
+import VideoLines from "@/assets/icons/VideoLines.svg";
 import WhitePanel from "@/assets/icons/whitepanel.svg";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 
 // API 임포트
-import { uploadMedia } from "@/api/media";
-import { useQuery } from "@tanstack/react-query";
-import { getActiveTripData } from "@/api/gallery";
 import { getTripAlbumDetail } from "@/api/album";
-import type { TripDetail, TripDetailResponse } from "@/types/gallery";
+import { getActiveTripData } from "@/api/gallery";
+import { uploadMedia } from "@/api/media";
+import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
+import { useGalleryTripsQuery } from "@/hooks/queries/gallery/useAllTrips";
+import { useDailyShotLimit } from "@/hooks/queries/useDailyShotLimit";
+import { useQuery } from "@tanstack/react-query";
 
 const CameraScreen = () => {
   const cameraRef = useRef<CameraView>(null);
@@ -46,19 +48,26 @@ const CameraScreen = () => {
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
-  const [capturedLocation, setCapturedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [capturedLocation, setCapturedLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isBlurDetected, setIsBlurDetected] = useState(false);
 
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  
+  const { tripId } = useLocalSearchParams<{ tripId?: string }>();
+  const parsedTripId = Number(tripId);
+
+  const { data: tripsData } = useGalleryTripsQuery();
+  const activeTripId = tripsData?.activeTrip?.id;
+
+  const targetTripId =
+    Number.isFinite(parsedTripId) && parsedTripId > 0
+      ? parsedTripId
+      : activeTripId;
+
   // API 연동용 상태
   const [comment, setComment] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-
-  const parsedTripId = useMemo(() => {
-    const parsed = Number(tripId);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-  }, [tripId]);
 
   // 1. 현재 여행 정보 실시간 데이터 가져오기 (Day 및 촬영 횟수 계산용)
   const { data: tripStatus, refetch: refetchTripStatus } = useQuery({
@@ -66,136 +75,173 @@ const CameraScreen = () => {
     queryFn: getActiveTripData,
   });
 
-// 2. 헤더 및 프로그레스 바에 넘길 데이터 계산
-const activeTrip = useMemo(() => {
-  return tripStatus?.trip?.find((t: any) => t.status === "ACTIVE") || tripStatus?.trip?.[0];
-}, [tripStatus]);
+  // 2. 헤더 및 프로그레스 바에 넘길 데이터 계산
+  const activeTrip = useMemo(() => {
+    return (
+      tripStatus?.trip?.find((t: any) => t.status === "ACTIVE") ||
+      tripStatus?.trip?.[0]
+    );
+  }, [tripStatus]);
 
-const targetTripId = useMemo(() => {
-  return parsedTripId ?? activeTrip?.id;
-}, [parsedTripId, activeTrip?.id]);
+  const { data: tripDetail, refetch: refetchTripDetail } = useQuery({
+    queryKey: albumKeys.detail(targetTripId as number),
+    queryFn: () => getTripAlbumDetail(targetTripId as number),
+    enabled: Number.isFinite(targetTripId) && Number(targetTripId) > 0,
+  });
 
-const { data: tripDetail, refetch: refetchTripDetail } = useQuery({
-  queryKey: ["tripAlbumDetail", targetTripId],
-  queryFn: () => getTripAlbumDetail(targetTripId as number),
-  enabled: Number.isFinite(targetTripId) && Number(targetTripId) > 0,
-  select: (data: TripDetailResponse): TripDetail => data.result,
-});
-
-const tripDays = useMemo(() => tripDetail?.days ?? [], [tripDetail?.days]);
-
-const todayKstYmd = useMemo(() => {
-  const now = new Date();
-  return new Date(now.getTime() + 9 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
-}, []);
-
-const todayUtcYmd = useMemo(() => {
-  return new Date().toISOString().split("T")[0];
-}, []);
-
-const expectedDayNumberFromTrip = useMemo(() => {
-  if (!activeTrip?.startDate) return undefined;
-
-  const start = new Date(activeTrip.startDate);
-  const now = new Date();
-  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffToNow = Math.floor(
-    (today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+  const tripDays = useMemo(
+    () => tripDetail?.result.days ?? [],
+    [tripDetail?.result.days]
   );
 
-  return Math.max(0, diffToNow);
-}, [activeTrip?.startDate]);
-
-const dayMeta = useMemo(() => {
-  if (!Array.isArray(tripDays) || tripDays.length === 0) {
-    return { todayData: undefined, currentDayFromDays: 1, totalDaysFromDays: 1 };
-  }
-
-  const dayNumbers = tripDays
-    .map((day: any) => Number(day.dayNumber))
-    .filter((value: number) => Number.isFinite(value));
-
-  const hasDayNumbers = dayNumbers.length > 0;
-  const minDayNumber = hasDayNumbers ? Math.min(...dayNumbers) : 1;
-  const maxDayNumber = hasDayNumbers ? Math.max(...dayNumbers) : 1;
-  const isZeroBased = minDayNumber === 0;
-
-  const byKstDate = tripDays.find((day: any) => day.date === todayKstYmd);
-  const byUtcDate = tripDays.find((day: any) => day.date === todayUtcYmd);
-
-  const expectedRaw = expectedDayNumberFromTrip;
-  const expectedDayNumber =
-    expectedRaw == null ? undefined : isZeroBased ? expectedRaw : expectedRaw + 1;
-  const byExpectedDayNumber =
-    expectedDayNumber == null
-      ? undefined
-      : tripDays.find((day: any) => Number(day.dayNumber) === expectedDayNumber);
-
-  const sortedByDayNumber = [...tripDays].sort(
-    (a: any, b: any) => Number(a.dayNumber) - Number(b.dayNumber)
-  );
-  const byLatestDayNumber = sortedByDayNumber[sortedByDayNumber.length - 1];
-
-  const todayData = byKstDate ?? byUtcDate ?? byExpectedDayNumber ?? byLatestDayNumber;
-  const todayRawNumber = Number(todayData?.dayNumber);
-  const todayNumber = Number.isFinite(todayRawNumber)
-    ? todayRawNumber
-    : isZeroBased
-    ? minDayNumber
-    : 1;
-
-  return {
-    todayData,
-    currentDayFromDays: isZeroBased ? todayNumber + 1 : Math.max(1, todayNumber),
-    totalDaysFromDays: isZeroBased ? maxDayNumber + 1 : Math.max(1, maxDayNumber),
-  };
-}, [tripDays, todayKstYmd, todayUtcYmd, expectedDayNumberFromTrip]);
-
-// [수정] 오늘 찍은 사진 개수 계산 로직
-const currentPicIndex = useMemo(() => {
-  const savedCount = dayMeta.todayData?.photos?.length ?? 0;
-  const nextIndex = savedCount + 1;
-
-  return nextIndex > 4 ? 4 : nextIndex;
-}, [dayMeta.todayData]);
-
-// [수정] Day 계산 로직
-const { currentDay, totalDays } = useMemo(() => {
-  if (tripDetail?.startDate && tripDetail?.endDate) {
-    const start = new Date(tripDetail.startDate);
-    const end = new Date(tripDetail.endDate);
+  const todayKstYmd = useMemo(() => {
     const now = new Date();
+    return new Date(now.getTime() + 9 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+  }, []);
 
-    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const todayUtcYmd = useMemo(() => {
+    return new Date().toISOString().split("T")[0];
+  }, []);
+
+  const expectedDayNumberFromTrip = useMemo(() => {
+    if (!activeTrip?.startDate) return undefined;
+
+    const start = new Date(activeTrip.startDate);
+    const now = new Date();
+    const startDay = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate()
+    );
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const diffToNow = Math.floor(
+      (today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-    const diffToNow = Math.floor((today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24));
-    const diffTotal = Math.floor((endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffToNow);
+  }, [activeTrip?.startDate]);
+
+  const dayMeta = useMemo(() => {
+    if (!Array.isArray(tripDays) || tripDays.length === 0) {
+      return {
+        todayData: undefined,
+        currentDayFromDays: 1,
+        totalDaysFromDays: 1,
+      };
+    }
+
+    const dayNumbers = tripDays
+      .map((day: any) => Number(day.dayNumber))
+      .filter((value: number) => Number.isFinite(value));
+
+    const hasDayNumbers = dayNumbers.length > 0;
+    const minDayNumber = hasDayNumbers ? Math.min(...dayNumbers) : 1;
+    const maxDayNumber = hasDayNumbers ? Math.max(...dayNumbers) : 1;
+    const isZeroBased = minDayNumber === 0;
+
+    const byKstDate = tripDays.find((day: any) => day.date === todayKstYmd);
+    const byUtcDate = tripDays.find((day: any) => day.date === todayUtcYmd);
+
+    const expectedRaw = expectedDayNumberFromTrip;
+    const expectedDayNumber =
+      expectedRaw == null
+        ? undefined
+        : isZeroBased
+          ? expectedRaw
+          : expectedRaw + 1;
+    const byExpectedDayNumber =
+      expectedDayNumber == null
+        ? undefined
+        : tripDays.find(
+            (day: any) => Number(day.dayNumber) === expectedDayNumber
+          );
+
+    const sortedByDayNumber = [...tripDays].sort(
+      (a: any, b: any) => Number(a.dayNumber) - Number(b.dayNumber)
+    );
+    const byLatestDayNumber = sortedByDayNumber[sortedByDayNumber.length - 1];
+
+    const todayData =
+      byKstDate ?? byUtcDate ?? byExpectedDayNumber ?? byLatestDayNumber;
+    const todayRawNumber = Number(todayData?.dayNumber);
+    const todayNumber = Number.isFinite(todayRawNumber)
+      ? todayRawNumber
+      : isZeroBased
+        ? minDayNumber
+        : 1;
 
     return {
-      currentDay: Math.max(1, diffToNow + 1),
-      totalDays: Math.max(1, diffTotal + 1),
+      todayData,
+      currentDayFromDays: isZeroBased
+        ? todayNumber + 1
+        : Math.max(1, todayNumber),
+      totalDaysFromDays: isZeroBased
+        ? maxDayNumber + 1
+        : Math.max(1, maxDayNumber),
     };
-  }
+  }, [tripDays, todayKstYmd, todayUtcYmd, expectedDayNumberFromTrip]);
 
-  return {
-    currentDay: dayMeta.currentDayFromDays,
-    totalDays: dayMeta.totalDaysFromDays,
-  };
-}, [tripDetail?.startDate, tripDetail?.endDate, dayMeta.currentDayFromDays, dayMeta.totalDaysFromDays]);
+  // [수정] 오늘 찍은 사진 개수 계산 로직
+  const currentPicIndex = useMemo(() => {
+    const savedCount = dayMeta.todayData?.photos?.length ?? 0;
+    const nextIndex = savedCount + 1;
 
-useFocusEffect(
-  useCallback(() => {
-    void refetchTripStatus();
-    if (targetTripId) {
-      void refetchTripDetail();
+    return nextIndex > 4 ? 4 : nextIndex;
+  }, [dayMeta.todayData]);
+
+  const { isLimitReached, todayPhotoCount } = useDailyShotLimit(
+    Number(targetTripId)
+  );
+
+  // [수정] Day 계산 로직
+  const { currentDay, totalDays } = useMemo(() => {
+    if (tripDetail?.result.startDate && tripDetail?.result.endDate) {
+      const start = new Date(tripDetail.result.startDate);
+      const end = new Date(tripDetail.result.endDate);
+      const now = new Date();
+
+      const startDay = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate()
+      );
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+      const diffToNow = Math.floor(
+        (today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const diffTotal = Math.floor(
+        (endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return {
+        currentDay: Math.max(1, diffToNow + 1),
+        totalDays: Math.max(1, diffTotal + 1),
+      };
     }
-  }, [refetchTripStatus, refetchTripDetail, targetTripId])
-);
+
+    return {
+      currentDay: dayMeta.currentDayFromDays,
+      totalDays: dayMeta.totalDaysFromDays,
+    };
+  }, [
+    tripDetail?.result.startDate,
+    tripDetail?.result.endDate,
+    dayMeta.currentDayFromDays,
+    dayMeta.totalDaysFromDays,
+  ]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetchTripStatus();
+      if (targetTripId) {
+        void refetchTripDetail();
+      }
+    }, [refetchTripStatus, refetchTripDetail, targetTripId])
+  );
 
   useEffect(() => {
     if (!permission) return;
@@ -226,8 +272,10 @@ useFocusEffect(
       setTimeout(() => {
         accelSub.remove();
         gyroSub.remove();
-        const accelAvg = accelSamples.reduce((a, b) => a + b, 0) / (accelSamples.length || 1);
-        const gyroAvg = gyroSamples.reduce((a, b) => a + b, 0) / (gyroSamples.length || 1);
+        const accelAvg =
+          accelSamples.reduce((a, b) => a + b, 0) / (accelSamples.length || 1);
+        const gyroAvg =
+          gyroSamples.reduce((a, b) => a + b, 0) / (gyroSamples.length || 1);
         resolve(accelAvg * 1.3 + gyroAvg * 0.8);
       }, 350);
     });
@@ -235,6 +283,14 @@ useFocusEffect(
 
   const handleShutterPress = async () => {
     if (!cameraRef.current || !isCameraReady) return;
+
+    if (mode === "photo" && isLimitReached) {
+      Alert.alert(
+        "오늘 촬영 완료",
+        "하루에 사진은 4장까지만 촬영할 수 있어요."
+      );
+      return;
+    }
 
     const getCurrentCoordinates = async () => {
       try {
@@ -246,7 +302,8 @@ useFocusEffect(
         });
 
         const { latitude, longitude } = position.coords;
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
+          return null;
 
         return { lat: latitude, lng: longitude };
       } catch (error) {
@@ -285,50 +342,50 @@ useFocusEffect(
     }
   };
 
- const handleSave = async () => {
-  if (!capturedUri || isUploading) return;
+  const handleSave = async () => {
+    if (!capturedUri || isUploading) return;
 
-  try {
-    setIsUploading(true);
+    try {
+      setIsUploading(true);
       if (!targetTripId) {
-      Alert.alert("오류", "여행 정보를 찾을 수 없습니다.");
-      return;
-    }
-
-    await uploadMedia(
-      mode,
-      targetTripId,
-      capturedUri,
-      comment,
-      capturedLocation?.lat ?? null,
-      capturedLocation?.lng ?? null
-    );
-
-    // 저장 성공 시 알림
-    Alert.alert("성공", "추억이 안전하게 저장되었습니다!", [
-      { 
-        text: "확인", 
-        onPress: async () => {
-          // 중요: 서버 데이터를 다시 불러와서(Refetch) 캐시를 갱신함
-          // 그래야 다시 카메라에 들어왔을 때 currentPicIndex가 업데이트됨
-          await Promise.all([refetchTripStatus(), refetchTripDetail()]);
-          
-          // 초기화 후 갤러리로 이동
-          setCapturedUri(null);
-          setComment("");
-          setCapturedLocation(null);
-          setIsBlurDetected(false);
-          router.push("/(tabs)/gallery");
-        } 
+        Alert.alert("오류", "여행 정보를 찾을 수 없습니다.");
+        return;
       }
-    ]);
-  } catch (error) {
-    console.error("Upload error:", error);
-    Alert.alert("실패", "서버 업로드 중 문제가 발생했습니다.");
-  } finally {
-    setIsUploading(false);
-  }
-};
+
+      await uploadMedia(
+        mode,
+        targetTripId,
+        capturedUri,
+        comment,
+        capturedLocation?.lat ?? null,
+        capturedLocation?.lng ?? null
+      );
+
+      // 저장 성공 시 알림
+      Alert.alert("성공", "추억이 안전하게 저장되었습니다!", [
+        {
+          text: "확인",
+          onPress: async () => {
+            // 중요: 서버 데이터를 다시 불러와서(Refetch) 캐시를 갱신함
+            // 그래야 다시 카메라에 들어왔을 때 currentPicIndex가 업데이트됨
+            await Promise.all([refetchTripStatus(), refetchTripDetail()]);
+
+            // 초기화 후 갤러리로 이동
+            setCapturedUri(null);
+            setComment("");
+            setCapturedLocation(null);
+            setIsBlurDetected(false);
+            router.push("/(tabs)/gallery");
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error("Upload error:", error);
+      Alert.alert("실패", "서버 업로드 중 문제가 발생했습니다.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // 다시 촬영하기 로직
   const handleRetake = () => {
@@ -347,8 +404,12 @@ useFocusEffect(
         {capturedUri ? (
           <View style={styles.resultWrapper}>
             <Image source={{ uri: capturedUri }} style={styles.resultImage} />
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-            
+            <BlurView
+              intensity={80}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+
             {/* 사진이 흔들렸을 때 뜨는 경고창의 '다시 찍기' */}
             {isBlurDetected && (
               <View style={styles.blurWarning}>
@@ -359,10 +420,16 @@ useFocusEffect(
               </View>
             )}
 
-            <Image source={require("@/assets/camera/photoframe.png")} style={styles.photoFrame} resizeMode="contain" />
+            <Image
+              source={require("@/assets/camera/photoframe.png")}
+              style={styles.photoFrame}
+              resizeMode="contain"
+            />
             <View style={styles.resultTextWrapper}>
               <Text style={styles.resultTitle}>촬영 완료!</Text>
-              <Text style={styles.resultSub}>여행이 끝난 후에 확인해보세요!</Text>
+              <Text style={styles.resultSub}>
+                여행이 끝난 후에 확인해보세요!
+              </Text>
             </View>
           </View>
         ) : (
@@ -399,7 +466,6 @@ useFocusEffect(
                   onPress={handleSave}
                 />
               </Pressable>
-            
             </View>
           </View>
         ) : (
@@ -407,7 +473,11 @@ useFocusEffect(
             <View style={styles.topRow}>
               <View style={styles.centerIndicators}>
                 <RedBar width={69} height={6} />
-                {mode === "photo" ? <CamLines width={96} height={16} /> : <VideoLines width={110} height={25} />}
+                {mode === "photo" ? (
+                  <CamLines width={96} height={16} />
+                ) : (
+                  <VideoLines width={110} height={25} />
+                )}
               </View>
               <Pressable style={styles.filterButton}>
                 <FilterIcon width={65} height={37} />
@@ -417,7 +487,7 @@ useFocusEffect(
             {/* 2. 하루 촬영 횟수 프로그레스 연동 */}
             {mode === "photo" && (
               <View style={styles.progressWrapper}>
-                <PicProgress current={currentPicIndex} />
+                <PicProgress current={todayPhotoCount + 1} />
               </View>
             )}
 
@@ -427,13 +497,32 @@ useFocusEffect(
             <View style={styles.centerStack}>
               <View style={styles.modeCenter}>
                 {(["photo", "video"] as const).map((item) => (
-                  <Pressable key={item} onPress={() => setMode(item)} style={styles.modeButtonWrapper}>
+                  <Pressable
+                    key={item}
+                    onPress={() => setMode(item)}
+                    style={styles.modeButtonWrapper}
+                  >
                     <LinearGradient
-                      colors={["rgba(190,190,190,0.9)", "rgba(190,190,190,0.2)"]}
+                      colors={[
+                        "rgba(190,190,190,0.9)",
+                        "rgba(190,190,190,0.2)",
+                      ]}
                       style={styles.gradientBorder}
                     >
-                      <View style={mode === item ? styles.activeButton : styles.inactiveButton}>
-                        <Text style={mode === item ? styles.activeText : styles.inactiveText}>
+                      <View
+                        style={
+                          mode === item
+                            ? styles.activeButton
+                            : styles.inactiveButton
+                        }
+                      >
+                        <Text
+                          style={
+                            mode === item
+                              ? styles.activeText
+                              : styles.inactiveText
+                          }
+                        >
                           {item === "photo" ? "사진" : "동영상"}
                         </Text>
                       </View>
@@ -444,12 +533,19 @@ useFocusEffect(
               <View style={styles.globalShutter}>
                 <Pressable onPress={handleShutterPress} disabled={isRecording}>
                   {mode === "photo" && <PhotoButton width={78} height={78} />}
-                  {mode === "video" && (isRecording ? <View style={styles.recordingSquare} /> : <VideoButton width={78} height={78} />)}
+                  {mode === "video" &&
+                    (isRecording ? (
+                      <View style={styles.recordingSquare} />
+                    ) : (
+                      <VideoButton width={78} height={78} />
+                    ))}
                 </Pressable>
               </View>
             </View>
             <View style={styles.switchWrapper}>
-              <SwitchCameraButton onPress={() => setFacing(facing === "back" ? "front" : "back")} />
+              <SwitchCameraButton
+                onPress={() => setFacing(facing === "back" ? "front" : "back")}
+              />
             </View>
           </>
         )}
@@ -460,20 +556,19 @@ useFocusEffect(
 
 export default CameraScreen;
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#111111",
   },
   retakeButton: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 10,
   },
   retakeText: {
-    color: '#888',
+    color: "#888",
     fontSize: 14,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
 
   cameraContainer: {
