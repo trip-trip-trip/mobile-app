@@ -7,13 +7,16 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tripshot",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.tripshot"
+      "bundleIdentifier": "com.anonymous.tripshot",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "사진 촬영 위치를 기록하기 위해 위치 접근 권한이 필요합니다."
+      }
     },
     "android": {
       "package": "com.anonymous.tripshot",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -22,10 +25,7 @@
               "scheme": "tripshot"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "adaptiveIcon": {
@@ -76,7 +76,13 @@
       ],
       "expo-secure-store",
       "expo-notifications",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "사진 촬영 위치를 기록하기 위해 위치 접근 권한이 필요합니다."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

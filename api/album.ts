@@ -8,7 +8,7 @@ export const getTripAlbumDetail = async (
   const { data } = await axiosInstance.get<TripDetailResponse>(
     `/trips/${tripId}`
   );
-  // console.log("앨범 상세:", data.result.days[0]);
+  console.log("앨범 상세:", data.result.days[0]);
   return data;
 };
 

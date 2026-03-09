@@ -40,7 +40,7 @@ const InviteCard = ({ type, onCopyLink, onKakaoShare, onAccept, onDecline, data 
           </View>
         )}
       </View>
-
+      
       <View style={styles.buttonWrapper}>
         {type === "sent" ? (
           <>

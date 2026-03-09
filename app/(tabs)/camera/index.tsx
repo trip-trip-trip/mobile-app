@@ -7,6 +7,7 @@ import FullButton from "@/components/FullButton";
 import { BlurView } from "expo-blur";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Location from "expo-location";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,9 +34,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { getTripAlbumDetail } from "@/api/album";
 import { getActiveTripData } from "@/api/gallery";
 import { uploadMedia } from "@/api/media";
-import queryClient from "@/api/queryClient";
 import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
-import { tripKeys } from "@/hooks/queries/gallery/tripKeys";
 import { useGalleryTripsQuery } from "@/hooks/queries/gallery/useAllTrips";
 import { useDailyShotLimit } from "@/hooks/queries/useDailyShotLimit";
 import { useQuery } from "@tanstack/react-query";
@@ -49,6 +48,10 @@ const CameraScreen = () => {
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [capturedLocation, setCapturedLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isBlurDetected, setIsBlurDetected] = useState(false);
 
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
@@ -146,8 +149,8 @@ const CameraScreen = () => {
       expectedRaw == null
         ? undefined
         : isZeroBased
-        ? expectedRaw
-        : expectedRaw + 1;
+          ? expectedRaw
+          : expectedRaw + 1;
     const byExpectedDayNumber =
       expectedDayNumber == null
         ? undefined
@@ -166,8 +169,8 @@ const CameraScreen = () => {
     const todayNumber = Number.isFinite(todayRawNumber)
       ? todayRawNumber
       : isZeroBased
-      ? minDayNumber
-      : 1;
+        ? minDayNumber
+        : 1;
 
     return {
       todayData,
@@ -289,13 +292,37 @@ const CameraScreen = () => {
       return;
     }
 
+    const getCurrentCoordinates = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return null;
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        const { latitude, longitude } = position.coords;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
+          return null;
+
+        return { lat: latitude, lng: longitude };
+      } catch (error) {
+        console.error("Location capture error:", error);
+        return null;
+      }
+    };
+
     if (mode === "photo") {
       try {
         const shakePromise = measureShakeWindow();
-        const photo = await cameraRef.current.takePictureAsync();
+        const [photo, location] = await Promise.all([
+          cameraRef.current.takePictureAsync(),
+          getCurrentCoordinates(),
+        ]);
         const shakeScore = await shakePromise;
         setIsBlurDetected(shakeScore > 0.25);
         setCapturedUri(photo.uri);
+        setCapturedLocation(location);
       } catch (error) {
         console.error("Photo capture error:", error);
       }
@@ -304,7 +331,9 @@ const CameraScreen = () => {
       try {
         setIsRecording(true);
         const video = await cameraRef.current.recordAsync({ maxDuration: 3 });
+        const location = await getCurrentCoordinates();
         if (video?.uri) setCapturedUri(video.uri);
+        setCapturedLocation(location);
       } catch (error) {
         console.error("Video recording error:", error);
       } finally {
@@ -323,12 +352,14 @@ const CameraScreen = () => {
         return;
       }
 
-      await uploadMedia(mode, targetTripId, capturedUri, comment);
-      // 성공시 앨범/여행 상세 정보 샷수 갱신
-      await queryClient.invalidateQueries({ queryKey: tripKeys.list() });
-      await queryClient.invalidateQueries({
-        queryKey: albumKeys.detail(targetTripId),
-      });
+      await uploadMedia(
+        mode,
+        targetTripId,
+        capturedUri,
+        comment,
+        capturedLocation?.lat ?? null,
+        capturedLocation?.lng ?? null
+      );
 
       // 저장 성공 시 알림
       Alert.alert("성공", "추억이 안전하게 저장되었습니다!", [
@@ -342,6 +373,7 @@ const CameraScreen = () => {
             // 초기화 후 갤러리로 이동
             setCapturedUri(null);
             setComment("");
+            setCapturedLocation(null);
             setIsBlurDetected(false);
             router.push("/(tabs)/gallery");
           },
@@ -359,6 +391,7 @@ const CameraScreen = () => {
   const handleRetake = () => {
     setCapturedUri(null);
     setComment("");
+    setCapturedLocation(null);
     setIsBlurDetected(false);
   };
 

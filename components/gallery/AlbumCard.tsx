@@ -9,6 +9,8 @@ type AlbumCardProps = {
 };
 
 export const AlbumCard = ({ data }: AlbumCardProps) => {
+  const coverUri = data.coverImage ?? data.photos[0] ?? "";
+
   return (
     <View style={styles.card}>
       <Text
@@ -30,7 +32,7 @@ export const AlbumCard = ({ data }: AlbumCardProps) => {
       <View style={{ flexDirection: "row" }}>
         <View style={styles.cardRight}>
           <Image
-            source={{ uri: data.coverImage }}
+            source={{ uri: coverUri }}
             style={{ width: 152, height: 152 }}
           />
         </View>
