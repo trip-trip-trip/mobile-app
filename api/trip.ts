@@ -4,6 +4,7 @@ import type {
   PlaceRes,
   TripCreateReq,
   TripRes,
+  TripUpdateReq,
 } from "@/types/trip";
 import { getSecureStore } from "@/utils/secureStore";
 
@@ -36,4 +37,21 @@ async function getActiveTrips(): Promise<ActiveTripCheckRes> {
   return data.result as ActiveTripCheckRes;
 }
 
-export { getPlaces, createTrip, getActiveTrips };
+// PATCH /trips/{id} — 여행 수정 (title, startDate, endDate, placeIds)
+async function updateTrip(id: number, req: TripUpdateReq): Promise<TripRes> {
+  const { data } = await axiosInstance.patch(`/trips/${id}`, req);
+  return data.result as TripRes;
+}
+
+// DELETE /trips/{id} — 여행 삭제 (OWNER만 가능)
+async function deleteTrip(id: number): Promise<void> {
+  await axiosInstance.delete(`/trips/${id}`);
+}
+
+// POST /trips/{id}/end — 여행 수동 종료
+async function endTrip(id: number): Promise<TripRes> {
+  const { data } = await axiosInstance.post(`/trips/${id}/end`);
+  return data.result as TripRes;
+}
+
+export { getPlaces, createTrip, getActiveTrips, updateTrip, deleteTrip, endTrip };

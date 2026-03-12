@@ -5,26 +5,31 @@ import { PhotoItem } from "@/components/gallery/PhotoItem";
 import Header from "@/components/Header";
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import { colors } from "@/constants/colors";
-import { useReels } from "@/hooks/queries/gallery/useReels"; // 네가 만든 경로로 맞춰
+import { useReels } from "@/hooks/queries/gallery/useReels";
+import { useDeleteTrip, useUpdateTrip } from "@/hooks/queries/useTripMutation";
 // 사진 저장 관련 라이브러리
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 // 사진 공유
 import * as Sharing from "expo-sharing";
 
+import { Feather } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
+  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import ViewShot from "react-native-view-shot";
@@ -36,16 +41,16 @@ import type { DayMedia, DetailMediaItem, TripDay } from "@/types/gallery";
 import { getNextDay, getTodayYmd, isCompletedTrip } from "@/utils/date";
 import { formatCoordLabelDms } from "@/utils/location";
 import { BlurView } from "expo-blur";
+import { endTrip } from "@/api/trip";
+import queryClient from "@/api/queryClient";
+import { tripKeys } from "@/hooks/queries/gallery/tripKeys";
+import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function Album() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selected, setSelected] = useState<DayMedia | null>(null);
-  // const selectedKind =
-  //   selected?.mediaKind === "VIDEO" || selected?.captureType === "VIDEO"
-  //     ? "video"
-  //     : "photo";
   const [selectedMeta, setSelectedMeta] = useState<{
     date: string;
     dayLabel: string;
@@ -55,9 +60,16 @@ export default function Album() {
   const [detailItems, setDetailItems] = useState<DetailMediaItem[]>([]);
   const [detailInitialIndex, setDetailInitialIndex] = useState(0);
 
+  // 여행 수정 모달
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+
+  // 여행 종료 로딩
+  const [isEndingTrip, setIsEndingTrip] = useState(false);
+
   const shotRefs = useRef<Record<number, any>>({});
 
-  const params = useLocalSearchParams<{ tripId?: string }>();
+  const params = useLocalSearchParams<{ tripId?: string; status?: string }>();
 
   const tripId = useMemo(() => {
     const raw = params.tripId;
@@ -67,6 +79,8 @@ export default function Album() {
   }, [params.tripId]);
 
   const albumQuery = useTripAlbumQuery(tripId);
+  const updateTrip = useUpdateTrip(tripId);
+  const deleteTrip = useDeleteTrip();
 
   const album = albumQuery.data?.result;
   const mediaData = album?.days ?? [];
@@ -83,10 +97,14 @@ export default function Album() {
       shots: mediaData.reduce((acc, d) => acc + d.photos.length, 0),
       video: mediaData.reduce((acc, d) => acc + d.videos.length, 0),
     }),
-    [tripId, album?.title, album?.startDate, album?.endDate, mediaData]
+    [tripId, album?.title, album?.startDate, album?.endDate, mediaData],
   );
 
-  const endDate = albumTitleData.endDate; // 안전하게 albumTitleData 기준
+  const endDate = albumTitleData.endDate;
+  // 종료 버튼 표시: status 기준 (날짜가 아닌 실제 완료 여부)
+  const tripStatus = params.status;
+  const canEndTrip = tripStatus !== "COMPLETED";
+  // 릴 표시 조건: 날짜 기준 유지 (endDate <= today 이면 릴 조회 가능)
   const isCompleted = isCompletedTrip(endDate, getTodayYmd());
 
   const {
@@ -109,6 +127,87 @@ export default function Album() {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const currentIndex = Math.round(contentOffsetX / SCREEN_WIDTH);
     if (currentIndex !== activeIndex) setActiveIndex(currentIndex);
+  };
+
+  // 여행 이름 수정 모달 열기
+  const handleOpenEditModal = () => {
+    setEditTitle(album?.title ?? "");
+    setEditModalVisible(true);
+  };
+
+  // 여행 이름 저장
+  const handleSaveTitle = async () => {
+    const trimmed = editTitle.trim();
+    if (!trimmed) {
+      Alert.alert("알림", "여행 이름을 입력해주세요.");
+      return;
+    }
+    try {
+      await updateTrip.mutateAsync({ title: trimmed });
+      setEditModalVisible(false);
+      Alert.alert("완료", "여행 이름이 수정됐습니다.");
+    } catch (error) {
+      console.error("[Trip update error]", error);
+      Alert.alert("오류", "수정에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
+
+  // 여행 삭제
+  const handleDeleteTrip = () => {
+    Alert.alert(
+      "여행 삭제",
+      "이 여행을 삭제하면 모든 사진과 영상이 함께 삭제됩니다.\n계속하시겠습니까?",
+      [
+        { text: "취소", style: "cancel" },
+        {
+          text: "삭제",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTrip.mutateAsync(tripId);
+            } catch (error) {
+              console.error("[Trip delete error]", error);
+              Alert.alert("오류", "삭제에 실패했습니다. 다시 시도해주세요.");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // 여행 수동 종료
+  const handleEndTrip = () => {
+    Alert.alert(
+      "여행 종료",
+      "지금 여행을 종료하면 사진 현상이 시작됩니다.\n계속하시겠습니까?",
+      [
+        { text: "취소", style: "cancel" },
+        {
+          text: "종료",
+          onPress: async () => {
+            setIsEndingTrip(true);
+            try {
+              await endTrip(tripId);
+              await queryClient.invalidateQueries({ queryKey: tripKeys.all });
+              await queryClient.invalidateQueries({
+                queryKey: albumKeys.detail(tripId),
+              });
+              router.replace({
+                pathname: "/(tabs)/gallery/developing" as any,
+                params: { tripId: String(tripId) },
+              });
+            } catch (error) {
+              console.error("[End trip error]", error);
+              setIsEndingTrip(false);
+              Alert.alert(
+                "오류",
+                "여행 종료에 실패했습니다. 다시 시도해주세요.",
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   // 네컷 캡처(이미지화)
@@ -208,7 +307,7 @@ export default function Album() {
         "저장 완료",
         target.mediaKind === "VIDEO"
           ? "영상 저장이 완료됐습니다."
-          : "사진 저장이 완료됐습니다."
+          : "사진 저장이 완료됐습니다.",
       );
     } catch (e) {
       console.log("downloadOriginalMedia error:", e);
@@ -240,7 +339,7 @@ export default function Album() {
             if (isBlur) {
               Alert.alert(
                 "현상 미완료",
-                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
               );
               return;
             }
@@ -250,7 +349,7 @@ export default function Album() {
             if (isBlur) {
               Alert.alert(
                 "현상 미완료",
-                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
               );
               return;
             }
@@ -283,7 +382,7 @@ export default function Album() {
                       const dayItems: DetailMediaItem[] = item.photos.map(
                         (p, i) => {
                           const dayLabel = `D${dayNum}-#${String(
-                            i + 1
+                            i + 1,
                           ).padStart(2, "0")}`;
                           return {
                             id: p.id,
@@ -295,7 +394,7 @@ export default function Album() {
                             lat: p.lat,
                             lng: p.lng,
                           };
-                        }
+                        },
                       );
 
                       setDetailItems(dayItems);
@@ -327,7 +426,7 @@ export default function Album() {
               onPress={() =>
                 Alert.alert(
                   "현상 미완료",
-                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
                 )
               }
             >
@@ -376,7 +475,42 @@ export default function Album() {
         leftIcon={<GoBackIcon />}
       />
       <ScrollView style={styles.safeArea}>
-        <AlbumTitle data={albumTitleData} isTraveling={!isCompleted} />
+        <AlbumTitle data={albumTitleData} isTraveling={canEndTrip} />
+
+        {/* 여행 액션 버튼 행 (수정 / 삭제 / 종료) */}
+        <View style={styles.actionRow}>
+          <Pressable
+            onPress={handleOpenEditModal}
+            hitSlop={8}
+            style={styles.actionIconBtn}
+          >
+            <Feather name="edit-2" size={16} color={colors.NAVY} />
+          </Pressable>
+          {canEndTrip && (
+            <Pressable
+              onPress={handleEndTrip}
+              disabled={isEndingTrip}
+              style={[
+                styles.actionBtn,
+                styles.endBtn,
+                isEndingTrip && { opacity: 0.5 },
+              ]}
+            >
+              <Text style={[styles.actionBtnText]}>
+                {isEndingTrip ? "종료 중..." : "여행 종료"}
+              </Text>
+            </Pressable>
+          )}
+          <View style={{ flex: 1 }} />
+          <Pressable
+            onPress={handleDeleteTrip}
+            hitSlop={8}
+            style={[styles.actionIconBtn, styles.deleteBtn]}
+            disabled={deleteTrip.isPending}
+          >
+            <Feather name="trash-2" size={16} color="#ea4335" />
+          </Pressable>
+        </View>
 
         <View style={styles.sectionSeparator} />
 
@@ -479,7 +613,7 @@ export default function Album() {
               if (isTodayCurrentDay) {
                 Alert.alert(
                   "현상 미완료",
-                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`
+                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
                 );
                 return;
               }
@@ -492,11 +626,11 @@ export default function Album() {
                   date: currentDay.date,
                   dayLabel: `D${currentDay.dayNumber}-V${String(i + 1).padStart(
                     2,
-                    "0"
+                    "0",
                   )}`,
                   lat: v.lat,
                   lng: v.lng,
-                })
+                }),
               );
 
               setDetailItems(dayItems);
@@ -536,6 +670,52 @@ export default function Album() {
           })}
         </View>
       </ScrollView>
+      {/* 여행 이름 수정 모달 */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setEditModalVisible(false)}
+        >
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <Text style={styles.modalTitle}>여행 이름 수정</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editTitle}
+              onChangeText={setEditTitle}
+              placeholder="여행 이름을 입력해주세요"
+              placeholderTextColor={colors.NAVY + "80"}
+              autoFocus
+              maxLength={30}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalSaveBtn,
+                  updateTrip.isPending && { opacity: 0.5 },
+                ]}
+                onPress={handleSaveTitle}
+                disabled={updateTrip.isPending}
+              >
+                <Text style={styles.modalSaveText}>
+                  {updateTrip.isPending ? "저장 중..." : "저장"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* 사진/영상 세부 페이지 */}
       <PhotoDetailModal
         visible={Boolean(selected && selectedMeta)}
@@ -633,6 +813,106 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.85)",
     borderRadius: 999,
     color: colors.INK,
+  },
+  actionRow: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.NAVY + "40",
+  },
+  actionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  endBtn: {
+    height: 34,
+    paddingVertical: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    // backgroundColor: colors.NAVY,
+    borderColor: colors.NAVY,
+  },
+  deleteBtn: {
+    borderColor: "#ea4335",
+  },
+  actionBtnText: {
+    fontFamily: "MonoplexKR-Regular",
+    fontSize: 12,
+    color: colors.NAVY,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCard: {
+    width: "80%",
+    backgroundColor: colors.CLOUD,
+    borderRadius: 12,
+    padding: 24,
+    gap: 16,
+  },
+  modalTitle: {
+    fontFamily: "MonoplexKR-Bold",
+    fontSize: 16,
+    color: colors.INK,
+    textAlign: "center",
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: colors.NAVY,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: "MonoplexKR-Regular",
+    fontSize: 14,
+    color: colors.INK,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.NAVY,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    fontFamily: "MonoplexKR-Medium",
+    fontSize: 14,
+    color: colors.NAVY,
+  },
+  modalSaveBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.NAVY,
+    alignItems: "center",
+  },
+  modalSaveText: {
+    fontFamily: "MonoplexKR-Medium",
+    fontSize: 14,
+    color: colors.CREAM,
   },
 
   indicatorContainer: {

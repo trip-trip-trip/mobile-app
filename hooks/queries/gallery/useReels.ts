@@ -48,6 +48,9 @@ export const useReels = ({
     onSuccess: (result: ReelResult) => {
       setReelId(result.reelId);
     },
+    onError: (error) => {
+      console.error("[Reel create error]", error);
+    },
   });
 
   /*
@@ -58,9 +61,10 @@ export const useReels = ({
     if (!canRun) return;
     if (reelId != null) return;
     if (createMutation.isPending) return;
+    if (createMutation.isError) return; // 에러 후 무한 재시도 방지
 
     createMutation.mutate(tripId);
-  }, [canRun, reelId, tripId, createMutation]);
+  }, [canRun, reelId, tripId, createMutation.isPending, createMutation.isError, createMutation.mutate]);
 
   /*
   GET

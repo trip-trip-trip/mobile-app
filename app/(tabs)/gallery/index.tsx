@@ -46,7 +46,11 @@ export default function Gallery() {
         {hasActive ? (
           activeTripInfo ? (
             <Pressable
-              onPress={() => router.push(`/gallery/${activeTripInfo.id}`)}
+              onPress={() =>
+                router.push(
+                  `/gallery/${activeTripInfo.id}?status=${activeTripInfo.status}`
+                )
+              }
             >
               <Ticket data={activeTripInfo} />
             </Pressable>
@@ -71,7 +75,9 @@ export default function Gallery() {
         {completedTrips?.map((trip) => (
           <Pressable
             key={trip.id}
-            onPress={() => router.push(`/gallery/${trip.id}`)}
+            onPress={() =>
+              router.push(`/gallery/${trip.id}?status=${trip.status}`)
+            }
           >
             <AlbumCard data={trip} />
           </Pressable>
@@ -83,8 +89,7 @@ export default function Gallery() {
 
 const styles = StyleSheet.create({
   page: {
-    width: "100%",
-    height: "100%",
+    flex: 1,
     backgroundColor: colors.CLOUD,
   },
   container: {

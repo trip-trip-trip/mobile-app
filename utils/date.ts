@@ -27,9 +27,9 @@ export const getNextDay = (dateStr: string) => {
   return { year, month, day };
 };
 
-// endDate가 today보다 이전이면 true
+// endDate가 today 이하이면 true (오늘 종료도 완료로 처리)
 export const isCompletedTrip = (endDate: string, todayYmd: string) => {
-  return endDate < todayYmd;
+  return endDate <= todayYmd;
 };
 
 const MONTHS = [

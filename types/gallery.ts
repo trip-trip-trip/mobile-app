@@ -10,6 +10,7 @@ export type TripInfo = {
   videoCount: number;
   photos: string[];
   coverImage: string | null;
+  status: "ACTIVE" | "UPCOMING" | "COMPLETED";
 };
 
 export type TripRaw = {
@@ -22,6 +23,7 @@ export type TripRaw = {
   photoCount: number;
   videoCount: number;
   myPhotoUrls: string[];
+  status: "ACTIVE" | "UPCOMING" | "COMPLETED";
 };
 
 export type TripItem = {

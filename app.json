@@ -9,13 +9,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.tripshot",
+      "bundleIdentifier": "com.tripshot.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "사진 촬영 위치를 기록하기 위해 위치 접근 권한이 필요합니다."
       }
     },
     "android": {
-      "package": "com.anonymous.tripshot",
+      "package": "com.tripshot.app",
       "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       "intentFilters": [
         {
@@ -85,8 +85,7 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {},

@@ -3,10 +3,13 @@ import { Tabs } from "expo-router";
 export default function TabsLayout() {
   return (
     <Tabs
-      screenOptions={{
+      initialRouteName="gallery"
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: { display: "none" },
-      }}
+        unmountOnBlur: route.name === "camera",
+        tabBarStyle: { display: "none", pointerEvents: "none" },
+      })}
+      tabBar={() => null}
     />
   );
 }
