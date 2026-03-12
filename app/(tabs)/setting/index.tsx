@@ -11,12 +11,14 @@ import {
   useUpdateNotificationSetting,
   useUpdateNotificationSlots,
   useUpdateProfile,
+  useTestNotification,
 } from "@/hooks/queries/useSettingMutation";
 import { SLOT_LABEL_MAP, SLOT_CODE_TO_LABEL } from "@/types/setting";
 import type { SlotCode } from "@/types/setting";
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 const SettingScreen = () => {
   const { user } = useAuthContext();
@@ -28,6 +30,7 @@ const SettingScreen = () => {
   const updateProfile = useUpdateProfile();
   const updateNotifSetting = useUpdateNotificationSetting();
   const updateSlots = useUpdateNotificationSlots();
+  const testNotification = useTestNotification();
 
   // 로컬 상태 (저장하기 전까지 편집 중)
   const [userId, setUserId] = useState(user?.userId ?? "");
@@ -39,6 +42,13 @@ const SettingScreen = () => {
   const [momentEnabled, setMomentEnabled] = useState(false);
   // 한국어 레이블 set으로 관리
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+
+  // user 로드 후 userId 초기값 동기화 (AuthContext 비동기 로딩 대응)
+  useEffect(() => {
+    if (user?.userId) {
+      setUserId(user.userId);
+    }
+  }, [user?.userId]);
 
   // 서버 데이터 로드 후 초기값 세팅
   useEffect(() => {
@@ -67,6 +77,15 @@ const SettingScreen = () => {
     });
   };
 
+  const handleTestNotification = async () => {
+    try {
+      await testNotification.mutateAsync();
+      Alert.alert("발송 완료", "테스트 알림을 발송했습니다.");
+    } catch {
+      Alert.alert("발송 실패", "디바이스가 등록되지 않았거나 알림 발송에 실패했습니다.");
+    }
+  };
+
   const handleSave = async () => {
     const promises: Promise<unknown>[] = [];
 
@@ -91,9 +110,7 @@ const SettingScreen = () => {
 
     // 알림 ON/OFF 변경사항
     if (notifSettings && momentEnabled !== notifSettings.momentEnabled) {
-      promises.push(
-        updateNotifSetting.mutateAsync({ momentEnabled }),
-      );
+      promises.push(updateNotifSetting.mutateAsync({ momentEnabled }));
     }
 
     // 슬롯 변경사항 (알림이 ON일 때만)
@@ -122,7 +139,8 @@ const SettingScreen = () => {
       await Promise.all(promises);
       setProfileImgChanged(false);
       Alert.alert("저장 완료", "설정이 저장되었습니다.");
-    } catch {
+    } catch (error) {
+      console.error("[Settings save error]", error);
       Alert.alert("오류", "저장 중 문제가 발생했습니다. 다시 시도해주세요.");
     }
   };
@@ -141,7 +159,9 @@ const SettingScreen = () => {
         label="setting"
         backgroundColor={colors.CLOUD}
         labelColor={colors.NAVY}
-        leftIcon={<GoBackIcon />}
+        leftIcon={
+          <GoBackIcon onPress={() => router.replace("/(tabs)/gallery")} />
+        }
       />
       <ScrollView
         contentContainerStyle={styles.container}
@@ -161,6 +181,7 @@ const SettingScreen = () => {
           isVisible={momentEnabled}
           selectedSlots={selectedSlots}
           onToggleSlot={handleToggleSlot}
+          onTestNotification={handleTestNotification}
         />
         <View style={styles.buttonWrapper}>
           <FullButton
@@ -182,6 +203,7 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     marginTop: 8,
+    gap: 12,
   },
 });
 

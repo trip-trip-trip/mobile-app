@@ -3,7 +3,9 @@ export const uploadMedia = async (
   mode: "photo" | "video",
   tripId: number,
   uri: string,
-  comment: string
+  comment: string,
+  lat?: number | null,
+  lng?: number | null
 ) => {
   const formData = new FormData();
 
@@ -24,8 +26,8 @@ export const uploadMedia = async (
     tripId: tripId,
     captureType: mode.toUpperCase(),
     comment: comment,
-    lat: 100, // 테스트용 하드코딩 (필요시 실제 좌표로 변경)
-    lng: 200,
+    lat: lat ?? null,
+    lng: lng ?? null,
   };
 
   // 4. [핵심] 415 에러 방지 - meta를 JSON 파트로 명시해서 추가

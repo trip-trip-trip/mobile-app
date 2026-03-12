@@ -15,6 +15,8 @@ export default function SettingScreen() {
       <Stack.Screen name="index" />
       {/* /gallery/[tripId] */}
       <Stack.Screen name="[tripId]" />
+      {/* /gallery/developing */}
+      <Stack.Screen name="developing" />
     </Stack>
   );
 }

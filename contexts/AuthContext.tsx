@@ -6,9 +6,16 @@ import {
   getSecureStore,
   saveSecureStore,
 } from "@/utils/secureStore";
-import * as Notifications from "expo-notifications";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
+
+// Expo Go(SDK 53+)는 expo-notifications import만으로 Java 크래시 → 런타임에만 로드
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const Notifications = isExpoGo
+  ? null
+  : (require("expo-notifications") as typeof import("expo-notifications"));
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -62,18 +69,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSignupTokenState(null);
 
     // FCM 디바이스 토큰 등록 (중복 등록 방지: SecureStore에 저장된 토큰과 비교)
+    // Expo Go는 네이티브 FCM 토큰 발급 불가 → 건너뜀
     try {
-      const { status } = await Notifications.getPermissionsAsync();
-      if (status === "granted") {
-        const expoPushToken = await Notifications.getExpoPushTokenAsync();
-        const deviceToken = expoPushToken.data;
-        const storedToken = await getSecureStore("deviceToken");
-        if (storedToken !== deviceToken) {
-          await registerDevice({
-            platform: Platform.OS,
-            deviceToken,
-          });
-          await saveSecureStore("deviceToken", deviceToken);
+      if (!isExpoGo && Notifications) {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status === "granted") {
+          const nativeToken = await Notifications.getDevicePushTokenAsync();
+          const deviceToken = nativeToken.data;
+          const storedToken = await getSecureStore("deviceToken");
+          if (storedToken !== deviceToken) {
+            await registerDevice({
+              platform: Platform.OS,
+              deviceToken,
+            });
+            await saveSecureStore("deviceToken", deviceToken);
+          }
         }
       }
     } catch {

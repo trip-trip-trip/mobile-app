@@ -4,6 +4,7 @@ import {
   updateMyProfile,
   updateNotificationSetting,
   updateNotificationSlots,
+  testNotification,
 } from "@/api/setting";
 
 // PATCH /users/me
@@ -33,5 +34,12 @@ export function useUpdateNotificationSlots() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", "settings"] });
     },
+  });
+}
+
+// POST /notifications/test-send
+export function useTestNotification() {
+  return useMutation({
+    mutationFn: testNotification,
   });
 }

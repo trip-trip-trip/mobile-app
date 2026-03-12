@@ -23,6 +23,7 @@ const mapTripToTripInfo = (trip: TripRaw): TripInfo => {
     videoCount: trip.videoCount,
     photos: trip.myPhotoUrls,
     coverImage: trip.myPhotoUrls.length > 0 ? trip.myPhotoUrls[0] : null,
+    status: trip.status,
   };
 };
 
@@ -35,7 +36,8 @@ const normalizeTripsForGallery = (items: TripRaw[]): GalleryTrips => {
   items.forEach((trip) => {
     const info = mapTripToTripInfo(trip);
 
-    if (isCompletedTrip(info.endDate, today)) completed.push(info);
+    if (info.status === "COMPLETED" || info.endDate < today)
+      completed.push(info);
     else active.push(info);
   });
 

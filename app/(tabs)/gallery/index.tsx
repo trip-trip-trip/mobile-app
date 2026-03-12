@@ -23,6 +23,8 @@ export default function Gallery() {
   const hasActive = Boolean(activeTripInfo);
   const completedTrips = data?.completedTrips ?? [];
 
+  const activeTripId = activeTripInfo?.id ?? 0;
+
   // 새로운 여행 시작하기 버튼 클릭시
   const handlePressStartTrip = () => {
     router.push("/(tabs)/trip");
@@ -44,7 +46,11 @@ export default function Gallery() {
         {hasActive ? (
           activeTripInfo ? (
             <Pressable
-              onPress={() => router.push(`/gallery/${activeTripInfo.id}`)}
+              onPress={() =>
+                router.push(
+                  `/gallery/${activeTripInfo.id}?status=${activeTripInfo.status}`
+                )
+              }
             >
               <Ticket data={activeTripInfo} />
             </Pressable>
@@ -69,7 +75,9 @@ export default function Gallery() {
         {completedTrips?.map((trip) => (
           <Pressable
             key={trip.id}
-            onPress={() => router.push(`/gallery/${trip.id}`)}
+            onPress={() =>
+              router.push(`/gallery/${trip.id}?status=${trip.status}`)
+            }
           >
             <AlbumCard data={trip} />
           </Pressable>
@@ -81,8 +89,7 @@ export default function Gallery() {
 
 const styles = StyleSheet.create({
   page: {
-    width: "100%",
-    height: "100%",
+    flex: 1,
     backgroundColor: colors.CLOUD,
   },
   container: {

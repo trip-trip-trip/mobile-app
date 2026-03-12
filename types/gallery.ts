@@ -10,6 +10,7 @@ export type TripInfo = {
   videoCount: number;
   photos: string[];
   coverImage: string | null;
+  status: "ACTIVE" | "UPCOMING" | "COMPLETED";
 };
 
 export type TripRaw = {
@@ -22,6 +23,7 @@ export type TripRaw = {
   photoCount: number;
   videoCount: number;
   myPhotoUrls: string[];
+  status: "ACTIVE" | "UPCOMING" | "COMPLETED";
 };
 
 export type TripItem = {
@@ -86,4 +88,28 @@ export type TripDetailResponse = {
     memberProfileUrls: string[];
     days: TripDay[];
   };
+};
+
+export type ReelResult = {
+  status: string;
+  reelId: number;
+  outputUrl: string | null;
+};
+
+export type ReelsResponse<T> = {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  result: T;
+};
+
+export type DetailMediaItem = {
+  id: number;
+  mediaKind: "PHOTO" | "VIDEO";
+  url: string;
+  comment?: string | null;
+  date: string;
+  dayLabel: string;
+  lat?: number | null;
+  lng?: number | null;
 };

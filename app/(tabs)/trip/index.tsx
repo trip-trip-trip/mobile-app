@@ -173,7 +173,7 @@ export default function TripsIndex() {
       <Header
         labelColor={colors.CREAM}
         backgroundColor={colors.CREAM}
-        leftIcon={<GoBackIcon />}
+        leftIcon={<GoBackIcon onPress={() => router.replace("/(tabs)/gallery")} />}
       />
       <View style={styles.headerTitleContainer}>
         <Text style={styles.titleText}>여행, 어디로 떠나시나요?</Text>
@@ -248,7 +248,10 @@ export default function TripsIndex() {
               onPress={() => handleCityPress(item.id)}
             />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            selectedIds.length > 0 && { paddingBottom: 76 + insets.bottom },
+          ]}
         />
       )}
 
@@ -323,6 +326,10 @@ const styles = StyleSheet.create({
     color: colors.INK,
   },
   buttonWrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
     paddingTop: 16,
     backgroundColor: colors.CLOUD,

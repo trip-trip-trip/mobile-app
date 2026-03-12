@@ -8,17 +8,24 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import FullButton from "../FullButton";
 
 type Props = {
   isVisible: boolean;
   selectedSlots: Set<string>;
   onToggleSlot: (label: string, code: SlotCode) => void;
+  onTestNotification: () => void;
 };
 
 // 슬롯 섹션 최대 높이 (실제 콘텐츠보다 충분히 크게)
-const MAX_HEIGHT = 300;
+const MAX_HEIGHT = 310;
 
-const SettingTimeslot = ({ isVisible, selectedSlots, onToggleSlot }: Props) => {
+const SettingTimeslot = ({
+  isVisible,
+  selectedSlots,
+  onToggleSlot,
+  onTestNotification,
+}: Props) => {
   const animatedMaxHeight = useSharedValue(0);
   const animatedOpacity = useSharedValue(0);
 
@@ -36,6 +43,7 @@ const SettingTimeslot = ({ isVisible, selectedSlots, onToggleSlot }: Props) => {
     maxHeight: animatedMaxHeight.value,
     opacity: animatedOpacity.value,
     overflow: "hidden",
+    gap: 16,
   }));
 
   return (
@@ -71,6 +79,11 @@ const SettingTimeslot = ({ isVisible, selectedSlots, onToggleSlot }: Props) => {
           })}
         </View>
       </View>
+      <FullButton
+        type="outlined"
+        label="알림 테스트하기"
+        onPress={onTestNotification}
+      />
     </Animated.View>
   );
 };
