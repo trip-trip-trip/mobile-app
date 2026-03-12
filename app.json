@@ -11,12 +11,11 @@
     "ios": {
       "supportsTablet": true,
       "googleServicesFile": "./GoogleService-Info.plist",
-      "bundleIdentifier": "com.anonymous.tripshot"
+      "bundleIdentifier": "com.tripshot.app"
 
     },
    "android": {
-      "googleServicesFile": "./google-services.json",
-      "package": "com.anonymous.tripshot",
+      "package": "com.tripshot.app",
       "intentFilters": [
         {
           "action": "VIEW",

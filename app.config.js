@@ -1,0 +1,90 @@
+/** @type {import('expo/config').ExpoConfig} */
+const config = {
+  name: "tripshot",
+  slug: "tripshot",
+  version: "1.0.0",
+  orientation: "portrait",
+  icon: "./assets/images/icon.png",
+  scheme: "tripshot",
+  userInterfaceStyle: "automatic",
+  newArchEnabled: true,
+  ios: {
+    supportsTablet: true,
+    googleServicesFile:
+      process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
+    bundleIdentifier: "com.tripshot.app",
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
+  },
+  android: {
+    googleServicesFile:
+      process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+    package: "com.tripshot.app",
+    intentFilters: [
+      {
+        action: "VIEW",
+        data: [{ scheme: "tripshot" }],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
+    adaptiveIcon: {
+      backgroundColor: "#E6F4FE",
+      foregroundImage: "./assets/images/android-icon-foreground.png",
+    },
+  },
+  web: {
+    output: "static",
+    favicon: "./assets/images/favicon.png",
+  },
+  plugins: [
+    "expo-router",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/images/splash-icon.png",
+        imageWidth: 200,
+        resizeMode: "contain",
+        backgroundColor: "#ffffff",
+        dark: { backgroundColor: "#000000" },
+      },
+    ],
+    [
+      "expo-font",
+      {
+        fonts: [
+          "./assets/fonts/MonoplexKR-Thin.ttf",
+          "./assets/fonts/MonoplexKR-ThinItalic.ttf",
+          "./assets/fonts/MonoplexKR-ExtraLight.ttf",
+          "./assets/fonts/MonoplexKR-ExtraLightItalic.ttf",
+          "./assets/fonts/MonoplexKR-Light.ttf",
+          "./assets/fonts/MonoplexKR-LightItalic.ttf",
+          "./assets/fonts/MonoplexKR-Regular.ttf",
+          "./assets/fonts/MonoplexKR-Italic.ttf",
+          "./assets/fonts/MonoplexKR-Text.ttf",
+          "./assets/fonts/MonoplexKR-TextItalic.ttf",
+          "./assets/fonts/MonoplexKR-Medium.ttf",
+          "./assets/fonts/MonoplexKR-MediumItalic.ttf",
+          "./assets/fonts/MonoplexKR-SemiBold.ttf",
+          "./assets/fonts/MonoplexKR-SemiBoldItalic.ttf",
+          "./assets/fonts/MonoplexKR-Bold.ttf",
+          "./assets/fonts/MonoplexKR-BoldItalic.ttf",
+        ],
+      },
+    ],
+    "expo-secure-store",
+    "expo-notifications",
+  ],
+  experiments: {
+    typedRoutes: true,
+    reactCompiler: true,
+  },
+  extra: {
+    router: {},
+    eas: {
+      projectId: "2bc88861-8c0e-4bf2-a9fe-50e614abb071",
+    },
+  },
+};
+
+export default config;
