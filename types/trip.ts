@@ -31,3 +31,10 @@ export interface ActiveTripCheckRes {
   isOngoing: boolean;
   trip: TripRes[] | null;
 }
+
+export type TripUpdateReq = {
+  title?: string;
+  startDate?: string;
+  endDate?: string;
+  placeIds?: number[];
+};

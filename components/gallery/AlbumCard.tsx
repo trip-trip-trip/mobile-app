@@ -9,6 +9,8 @@ type AlbumCardProps = {
 };
 
 export const AlbumCard = ({ data }: AlbumCardProps) => {
+  const coverUri = data.coverImage ?? data.photos[0] ?? "";
+
   return (
     <View style={styles.card}>
       <Text
@@ -30,7 +32,7 @@ export const AlbumCard = ({ data }: AlbumCardProps) => {
       <View style={{ flexDirection: "row" }}>
         <View style={styles.cardRight}>
           <Image
-            source={{ uri: data.coverImage }}
+            source={{ uri: coverUri }}
             style={{ width: 152, height: 152 }}
           />
         </View>
@@ -58,15 +60,22 @@ export const AlbumCard = ({ data }: AlbumCardProps) => {
                 paddingVertical: 6,
                 gap: 5,
                 justifyContent: "center",
-                alignItems: "center",
+                alignItems: "start",
               }}
             >
               <Text style={styles.contentTitle}>LOCATION</Text>
               <Text style={styles.contentText}>{data.placeName}</Text>
             </View>
-            <View style={{ paddingHorizontal: 12, paddingVertical: 6, gap: 5 }}>
+            <View
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                gap: 1,
+                justifyContent: "space-between",
+              }}
+            >
               <Text style={styles.contentTitle}>PEOPLE</Text>
-              <SharedProfiles data={data.members} size={16} />
+              <SharedProfiles data={data.members} size={20} />
             </View>
           </View>
           <View
@@ -118,6 +127,7 @@ const styles = StyleSheet.create({
   },
   contentText: {
     fontSize: 14,
+    lineHeight: 14,
     color: colors.NAVY,
     fontWeight: 400,
     fontFamily: "Monoplex KR",

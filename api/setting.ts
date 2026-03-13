@@ -22,16 +22,19 @@ async function updateMyProfile(params: {
   const formData = new FormData();
 
   if (params.imageFile) {
-    formData.append("image", {
+    formData.append("file", {
       uri: params.imageFile.uri,
       name: params.imageFile.name,
       type: params.imageFile.type,
     } as any);
   }
 
-  if (params.userId !== undefined) {
-    formData.append("userId", params.userId);
-  }
+  // @RequestPart("data") UpdateMyProfileReq — requires application/json content-type
+  const dataBlob = new Blob(
+    [JSON.stringify({ userId: params.userId ?? null })],
+    { type: "application/json" }
+  );
+  formData.append("data", dataBlob);
 
   const { data } = await axiosInstance.patch("/users/me", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -62,6 +65,11 @@ async function registerDevice(req: DeviceTokenReq): Promise<void> {
   await axiosInstance.post("/notifications/devices", req);
 }
 
+// POST /notifications/test-send — 조건 무시하고 즉시 FCM 테스트 발송
+async function testNotification(): Promise<void> {
+  await axiosInstance.post("/notifications/test-send");
+}
+
 export {
   getMyProfile,
   updateMyProfile,
@@ -69,4 +77,5 @@ export {
   updateNotificationSetting,
   updateNotificationSlots,
   registerDevice,
+  testNotification,
 };

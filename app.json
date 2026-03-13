@@ -7,16 +7,16 @@
     "icon": "./assets/images/icon.png",
     "scheme": "tripshot",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "bundleIdentifier": "com.anonymous.tripshot"
-
+      "bundleIdentifier": "com.tripshot.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "사진 촬영 위치를 기록하기 위해 위치 접근 권한이 필요합니다."
+      }
     },
-   "android": {
-      "googleServicesFile": "./google-services.json",
-      "package": "com.anonymous.tripshot",
+    "android": {
+      "package": "com.tripshot.app",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -25,10 +25,7 @@
               "scheme": "tripshot"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "adaptiveIcon": {
@@ -78,11 +75,17 @@
         }
       ],
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "사진 촬영 위치를 기록하기 위해 위치 접근 권한이 필요합니다."
+        }
+      ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "router": {},
