@@ -100,19 +100,46 @@ export default function TripsIndex() {
 
   // 현재 탭 + 필터 기준 SectionList 데이터
   const sections: Section[] = useMemo(() => {
-    const topLevelFilters =
-      mainTab === "국내" ? domesticFilterTabs : internationalFilterTabs;
-    const filtered =
-      subFilter === "전체"
-        ? topLevelFilters
-        : topLevelFilters.filter((t) => t.name === subFilter);
+    if (mainTab === "국내") {
+      const filtered =
+        subFilter === "전체"
+          ? domesticFilterTabs
+          : domesticFilterTabs.filter((t) => t.name === subFilter);
 
-    return filtered
-      .map((filterItem) => ({
-        title: filterItem.name,
-        data: getCityDescendants(filterItem.id, childrenOf),
-      }))
-      .filter((s) => s.data.length > 0);
+      return filtered
+        .map((filterItem) => ({
+          title: filterItem.name,
+          data: getCityDescendants(filterItem.id, childrenOf),
+        }))
+        .filter((s) => s.data.length > 0);
+    } else {
+      // 해외: country(탭) → region(섹션 헤더) → city(아이템)
+      const filtered =
+        subFilter === "전체"
+          ? internationalFilterTabs
+          : internationalFilterTabs.filter((t) => t.name === subFilter);
+
+      const result: Section[] = [];
+      for (const country of filtered) {
+        const regions = childrenOf.get(country.id) ?? [];
+        for (const region of regions) {
+          const cities = (childrenOf.get(region.id) ?? []).filter(
+            (c) => c.type === "CITY",
+          );
+          const cityItems: CityDisplayItem[] = cities.map((city) => {
+            const spots = childrenOf.get(city.id) ?? [];
+            return {
+              ...city,
+              description: spots.map((s) => s.name).join(", "),
+            };
+          });
+          if (cityItems.length > 0) {
+            result.push({ title: region.name, data: cityItems });
+          }
+        }
+      }
+      return result;
+    }
   }, [
     mainTab,
     subFilter,
@@ -173,7 +200,9 @@ export default function TripsIndex() {
       <Header
         labelColor={colors.CREAM}
         backgroundColor={colors.CREAM}
-        leftIcon={<GoBackIcon onPress={() => router.replace("/(tabs)/gallery")} />}
+        leftIcon={
+          <GoBackIcon onPress={() => router.replace("/(tabs)/gallery")} />
+        }
       />
       <View style={styles.headerTitleContainer}>
         <Text style={styles.titleText}>여행, 어디로 떠나시나요?</Text>
