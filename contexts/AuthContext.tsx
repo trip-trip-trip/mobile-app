@@ -49,6 +49,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (token && userJson) {
             setHeader("Authorization", `Bearer ${token}`);
             setUser(JSON.parse(userJson) as AuthUser);
+
+            // 디바이스 토큰 재등록 (APNs 토큰 변경 대비)
+            if (!isExpoGo && Notifications) {
+              try {
+                const { status } = await Notifications.getPermissionsAsync();
+                if (status === "granted") {
+                  const nativeToken =
+                    await Notifications.getDevicePushTokenAsync();
+                  const deviceToken = nativeToken.data;
+                  const storedToken = await getSecureStore("deviceToken");
+                  if (storedToken !== deviceToken) {
+                    await registerDevice({
+                      platform: Platform.OS,
+                      deviceToken,
+                    });
+                    await saveSecureStore("deviceToken", deviceToken);
+                  }
+                }
+              } catch {
+                // 토큰 갱신 실패는 로그인 복원 흐름을 막지 않음
+              }
+            }
           }
         }
       } finally {

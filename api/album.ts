@@ -8,7 +8,7 @@ export const getTripAlbumDetail = async (
   const { data } = await axiosInstance.get<TripDetailResponse>(
     `/trips/${tripId}`
   );
-  console.log("앨범 상세:", data.result.days[0]);
+  if (__DEV__) console.log("앨범 상세:", data.result.days[0]);
   return data;
 };
 
@@ -26,7 +26,7 @@ export const getTripAlbumDays = async (tripId: number): Promise<TripDay[]> => {
 // POST: 릴스 생성
 export async function postCreateReel(tripId: number) {
   const { data } = await axiosInstance.post(`/trips/${tripId}/reel`);
-  console.log("[REEL POST RESULT]", data);
+  if (__DEV__) console.log("[REEL POST RESULT]", data);
   return data.result;
 }
 
@@ -34,6 +34,6 @@ export async function postCreateReel(tripId: number) {
 export const getReel = async (tripId: number) => {
   const { data } = await axiosInstance.get(`/trips/${tripId}/reel`);
   if (!data.isSuccess) throw new Error(data.message);
-  console.log("[REEL][GET] RAW", data);
+  if (__DEV__) console.log("[REEL][GET] RAW", data);
   return data.result;
 };

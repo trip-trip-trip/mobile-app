@@ -435,6 +435,7 @@ const CameraScreen = () => {
         ) : (
           <>
             <CameraView
+              key={mode}
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
@@ -499,7 +500,10 @@ const CameraScreen = () => {
                 {(["photo", "video"] as const).map((item) => (
                   <Pressable
                     key={item}
-                    onPress={() => setMode(item)}
+                    onPress={() => {
+                      setIsCameraReady(false);
+                      setMode(item);
+                    }}
                     style={styles.modeButtonWrapper}
                   >
                     <LinearGradient
@@ -704,6 +708,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+    top: 0,
     bottom: 0,
     alignItems: "center",
   },
@@ -722,6 +727,7 @@ const styles = StyleSheet.create({
   gradientBorder: {
     padding: 2,
     borderRadius: 20,
+    overflow: "hidden",
   },
 
   activeButton: {

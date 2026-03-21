@@ -29,12 +29,12 @@ async function updateMyProfile(params: {
     } as any);
   }
 
-  // @RequestPart("data") UpdateMyProfileReq — requires application/json content-type
-  const dataBlob = new Blob(
-    [JSON.stringify({ userId: params.userId ?? null })],
-    { type: "application/json" }
-  );
-  formData.append("data", dataBlob);
+  // @RequestPart("data") UpdateMyProfileReq — React Native FormData JSON part
+  formData.append("data", {
+    string: JSON.stringify({ userId: params.userId ?? null }),
+    type: "application/json",
+    name: "data",
+  } as any);
 
   const { data } = await axiosInstance.patch("/users/me", formData, {
     headers: { "Content-Type": "multipart/form-data" },
