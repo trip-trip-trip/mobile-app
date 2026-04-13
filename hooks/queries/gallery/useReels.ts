@@ -28,19 +28,47 @@ export const useReels = ({
 }: Params) => {
   const ready = useMemo(
     () => isCompletedTrip(endDate, getTodayYmd()),
-    [endDate]
+    [endDate],
   );
 
   const canRun = enabled && ready && tripId > 0;
 
   const [reelId, setReelId] = useState<number | null>(initialReelId);
+  const [checkedExisting, setCheckedExisting] = useState(false);
 
   useEffect(() => {
     setReelId(initialReelId);
+    setCheckedExisting(false);
   }, [tripId, initialReelId]);
 
   /*
-  POST
+  1단계: 마운트 시 GET으로 기존 릴스 확인
+  */
+
+  const existingReelQuery = useQuery({
+    queryKey: ["reel-check", tripId],
+    queryFn: () => getReel(tripId),
+    enabled: canRun && !checkedExisting,
+    staleTime: 0,
+    retry: false,
+  });
+
+  // 기존 릴스가 있으면 reelId 세팅, POST 스킵
+  useEffect(() => {
+    if (!canRun || checkedExisting) return;
+    if (existingReelQuery.isLoading) return;
+
+    if (existingReelQuery.data) {
+      const { status, reelId: existingId } = existingReelQuery.data;
+      if (status !== "none" && existingId != null) {
+        setReelId(existingId);
+      }
+    }
+    setCheckedExisting(true);
+  }, [canRun, checkedExisting, existingReelQuery.isLoading, existingReelQuery.data]);
+
+  /*
+  2단계: POST — 기존 릴스 확인 후 없을 때만 생성
   */
 
   const createMutation = useMutation({
@@ -53,21 +81,18 @@ export const useReels = ({
     },
   });
 
-  /*
-  여행 완료 && reelId 없음 -> 생성
-  */
-
   useEffect(() => {
     if (!canRun) return;
+    if (!checkedExisting) return; // 기존 릴스 확인 전에는 POST 하지 않음
     if (reelId != null) return;
     if (createMutation.isPending) return;
-    if (createMutation.isError) return; // 에러 후 무한 재시도 방지
+    if (createMutation.isError) return;
 
     createMutation.mutate(tripId);
-  }, [canRun, reelId, tripId, createMutation.isPending, createMutation.isError, createMutation.mutate]);
+  }, [canRun, checkedExisting, reelId, tripId, createMutation.isPending, createMutation.isError, createMutation.mutate]);
 
   /*
-  GET
+  3단계: GET 폴링 — reelId가 있으면 상태 추적
   */
 
   const reelQuery = useQuery({

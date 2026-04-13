@@ -101,11 +101,11 @@ export default function Album() {
   );
 
   const endDate = albumTitleData.endDate;
-  // 종료 버튼 표시: status 기준 (날짜가 아닌 실제 완료 여부)
-  const tripStatus = params.status;
-  const canEndTrip = tripStatus !== "COMPLETED";
   // 릴 표시 조건: 날짜 기준 유지 (endDate <= today 이면 릴 조회 가능)
   const isCompleted = isCompletedTrip(endDate, getTodayYmd());
+  // 종료 버튼 표시: status 기준 + 날짜 기반 완료 여부 (param 없어도 정확)
+  const tripStatus = params.status;
+  const canEndTrip = tripStatus !== "COMPLETED" && !isCompleted;
 
   const {
     status: reelStatus,
@@ -120,7 +120,7 @@ export default function Album() {
   });
 
   const currentDay = mediaData[activeIndex];
-  const isTodayCurrentDay = currentDay?.date === getTodayYmd();
+  const isTodayCurrentDay = !isCompleted && currentDay?.date === getTodayYmd();
   // console.log("VIDEO", currentDay?.videos);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -319,7 +319,7 @@ export default function Album() {
     // 일자 - day 1, 2, ..
     const dayNum = index + 1;
     const fourPhotos = item.photos.slice(0, 4); // 네컷 캡처
-    const isBlur = item.date === getTodayYmd();
+    const isBlur = !isCompleted && item.date === getTodayYmd();
     const nextDay = getNextDay(item.date);
 
     const blockIfToday = () => {
