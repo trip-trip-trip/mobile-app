@@ -21,6 +21,12 @@ const config = {
     googleServicesFile:
       process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
     package: "com.tripshot.app",
+    permissions: [
+      "ACCESS_COARSE_LOCATION",
+      "ACCESS_FINE_LOCATION",
+      "CAMERA",
+      "RECORD_AUDIO",
+    ],
     intentFilters: [
       {
         action: "VIEW",
@@ -70,6 +76,16 @@ const config = {
           "./assets/fonts/MonoplexKR-Bold.ttf",
           "./assets/fonts/MonoplexKR-BoldItalic.ttf",
         ],
+      },
+    ],
+    [
+      "expo-camera",
+      {
+        cameraPermission:
+          "사진 및 영상 촬영을 위해 카메라 접근 권한이 필요합니다.",
+        microphonePermission:
+          "영상 촬영을 위해 마이크 접근 권한이 필요합니다.",
+        recordAudioAndroid: true,
       },
     ],
     "expo-secure-store",

@@ -5,7 +5,11 @@ import SwitchCameraButton from "@/components/camera/SwitchCameraButton";
 import FullButton from "@/components/FullButton";
 
 import { BlurView } from "expo-blur";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import {
+  CameraView,
+  useCameraPermissions,
+  useMicrophonePermissions,
+} from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { Accelerometer, Gyroscope } from "expo-sensors";
@@ -42,6 +46,7 @@ import { useQuery } from "@tanstack/react-query";
 const CameraScreen = () => {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
   const [mode, setMode] = useState<"photo" | "video">("photo");
   const [isRecording, setIsRecording] = useState(false);
@@ -247,6 +252,11 @@ const CameraScreen = () => {
     if (!permission) return;
     if (!permission.granted) requestPermission();
   }, [permission, requestPermission]);
+
+  useEffect(() => {
+    if (!micPermission) return;
+    if (!micPermission.granted) requestMicPermission();
+  }, [micPermission, requestMicPermission]);
 
   if (!permission?.granted) {
     return <View style={{ flex: 1, backgroundColor: "black" }} />;
