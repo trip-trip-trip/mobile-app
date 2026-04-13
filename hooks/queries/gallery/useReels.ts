@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getReel, postCreateReel } from "@/api/album";
 import type { ReelResult } from "@/types/gallery";
@@ -35,10 +35,12 @@ export const useReels = ({
 
   const [reelId, setReelId] = useState<number | null>(initialReelId);
   const [checkedExisting, setCheckedExisting] = useState(false);
+  const hasPosted = useRef(false);
 
   useEffect(() => {
     setReelId(initialReelId);
     setCheckedExisting(false);
+    hasPosted.current = false;
   }, [tripId, initialReelId]);
 
   /*
@@ -91,9 +93,11 @@ export const useReels = ({
     if (!canRun) return;
     if (!checkedExisting) return; // 기존 릴스 확인 전에는 POST 하지 않음
     if (reelId != null) return;
+    if (hasPosted.current) return; // 이미 POST 했으면 절대 재호출 안 함
     if (createMutation.isPending) return;
     if (createMutation.isError) return;
 
+    hasPosted.current = true;
     createMutation.mutate(tripId);
   }, [canRun, checkedExisting, reelId, tripId, createMutation.isPending, createMutation.isError, createMutation.mutate]);
 

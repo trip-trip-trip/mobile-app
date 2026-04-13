@@ -1,5 +1,4 @@
 import { colors } from "@/constants/colors";
-import { useReels } from "@/hooks/queries/gallery/useReels";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -10,7 +9,8 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { getTodayYmd } from "@/utils/date";
+
+const DEVELOPING_DURATION_MS = 2500;
 
 export default function DevelopingScreen() {
   const params = useLocalSearchParams<{ tripId?: string }>();
@@ -19,20 +19,14 @@ export default function DevelopingScreen() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
   }, [params.tripId]);
 
-  const today = getTodayYmd();
-
-  const { checkedExisting } = useReels({
-    tripId,
-    endDate: today,
-    enabled: tripId > 0,
-  });
-
-  // 기존 릴스 확인 완료 후 앨범으로 이동
-  // 릴스 생성/폴링은 앨범 페이지의 useReels가 이어서 처리
+  // 현상 애니메이션 후 앨범으로 이동
+  // 릴스 생성은 앨범 페이지의 useReels가 단독으로 처리 (중복 POST 방지)
   useEffect(() => {
-    if (!checkedExisting) return;
-    router.replace(`/(tabs)/gallery/${tripId}` as any);
-  }, [checkedExisting, tripId]);
+    const timer = setTimeout(() => {
+      router.replace(`/(tabs)/gallery/${tripId}` as any);
+    }, DEVELOPING_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [tripId]);
 
   // 필름 스트립 애니메이션
   const translateX = useSharedValue(0);

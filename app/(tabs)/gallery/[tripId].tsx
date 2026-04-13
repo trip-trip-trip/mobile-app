@@ -606,8 +606,10 @@ export default function Album() {
             </View>
           )}
 
-          {/* 기존 day 영상들 */}
-          {currentDay?.videos.map((video, idx) => {
+          {/* 기존 day 영상들 (릴스 합본 영상은 제외) */}
+          {currentDay?.videos
+            .filter((v) => !outputUrl || v.url !== outputUrl)
+            .map((video, idx) => {
             const nextDay = getNextDay(currentDay.date);
             const onPress = () => {
               if (isTodayCurrentDay) {
