@@ -21,25 +21,18 @@ export default function DevelopingScreen() {
 
   const today = getTodayYmd();
 
-  const { status, checkedExisting } = useReels({
+  const { checkedExisting } = useReels({
     tripId,
     endDate: today,
     enabled: tripId > 0,
   });
 
-  // 기존 릴스 확인 완료 후, 최종 상태이거나 처리 중이면 앨범으로 이동
-  // (기존 릴스가 있어 POST 스킵된 경우에도 정상 이동)
+  // 기존 릴스 확인 완료 후 앨범으로 이동
+  // 릴스 생성/폴링은 앨범 페이지의 useReels가 이어서 처리
   useEffect(() => {
     if (!checkedExisting) return;
-    if (
-      status === "done" ||
-      status === "failed" ||
-      status === "queued" ||
-      status === "rendering"
-    ) {
-      router.replace(`/(tabs)/gallery/${tripId}` as any);
-    }
-  }, [status, tripId, checkedExisting]);
+    router.replace(`/(tabs)/gallery/${tripId}` as any);
+  }, [checkedExisting, tripId]);
 
   // 필름 스트립 애니메이션
   const translateX = useSharedValue(0);

@@ -53,14 +53,20 @@ export const useReels = ({
     retry: false,
   });
 
-  // 기존 릴스가 있으면 reelId 세팅, POST 스킵
+  // 기존 릴스 확인: 렌더링 진행/완료 상태면 reelId 세팅 → POST 스킵
+  // "collecting"은 아직 POST(createReel)가 필요한 상태이므로 스킵하지 않음
   useEffect(() => {
     if (!canRun || checkedExisting) return;
     if (existingReelQuery.isLoading) return;
 
     if (existingReelQuery.data) {
       const { status, reelId: existingId } = existingReelQuery.data;
-      if (status !== "none" && existingId != null) {
+      const isRenderStarted =
+        status === "queued" ||
+        status === "rendering" ||
+        status === "done" ||
+        status === "failed";
+      if (isRenderStarted && existingId != null) {
         setReelId(existingId);
       }
     }
