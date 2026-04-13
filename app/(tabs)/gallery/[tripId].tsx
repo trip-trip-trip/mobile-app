@@ -103,9 +103,9 @@ export default function Album() {
   const endDate = albumTitleData.endDate;
   // 릴 표시 조건: 날짜 기준 유지 (endDate <= today 이면 릴 조회 가능)
   const isCompleted = isCompletedTrip(endDate, getTodayYmd());
-  // 종료 버튼 표시: status 기준 + 날짜 기반 완료 여부 (param 없어도 정확)
+  // 종료 버튼 표시: status param이 ACTIVE일 때만 (param 없으면 종료 버튼 숨김)
   const tripStatus = params.status;
-  const canEndTrip = tripStatus !== "COMPLETED" && !isCompleted;
+  const canEndTrip = tripStatus === "ACTIVE";
 
   const {
     status: reelStatus,
