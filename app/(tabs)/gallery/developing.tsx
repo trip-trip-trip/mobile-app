@@ -1,7 +1,7 @@
 import { colors } from "@/constants/colors";
 import { useReels } from "@/hooks/queries/gallery/useReels";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
   useSharedValue,
@@ -21,27 +21,25 @@ export default function DevelopingScreen() {
 
   const today = getTodayYmd();
 
-  const { status, isCreating } = useReels({
+  const { status, checkedExisting } = useReels({
     tripId,
     endDate: today,
     enabled: tripId > 0,
   });
 
-  // mutation이 한 번이라도 실행됐는지 추적
-  // (첫 렌더에서 status === "none"이 되어 즉시 이동하는 것을 방지)
-  const [mutationStarted, setMutationStarted] = useState(false);
-
+  // 기존 릴스 확인 완료 후, 최종 상태이거나 처리 중이면 앨범으로 이동
+  // (기존 릴스가 있어 POST 스킵된 경우에도 정상 이동)
   useEffect(() => {
-    if (isCreating) setMutationStarted(true);
-  }, [isCreating]);
-
-  // mutation이 시작된 이후 완료/실패/없음이면 앨범으로 이동
-  useEffect(() => {
-    if (!mutationStarted) return;
-    if (status === "done" || status === "failed" || status === "none") {
+    if (!checkedExisting) return;
+    if (
+      status === "done" ||
+      status === "failed" ||
+      status === "queued" ||
+      status === "rendering"
+    ) {
       router.replace(`/(tabs)/gallery/${tripId}` as any);
     }
-  }, [status, tripId, mutationStarted]);
+  }, [status, tripId, checkedExisting]);
 
   // 필름 스트립 애니메이션
   const translateX = useSharedValue(0);

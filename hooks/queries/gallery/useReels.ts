@@ -141,6 +141,7 @@ export const useReels = ({
   return {
     canRun,
     ready,
+    checkedExisting,
 
     reelId,
     status,
