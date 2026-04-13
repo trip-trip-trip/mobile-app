@@ -17,7 +17,6 @@ import * as Sharing from "expo-sharing";
 
 import { Feather } from "@expo/vector-icons";
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
@@ -42,6 +41,7 @@ import { getNextDay, getTodayYmd, isCompletedTrip } from "@/utils/date";
 import { formatCoordLabelDms } from "@/utils/location";
 import { BlurView } from "expo-blur";
 import { endTrip } from "@/api/trip";
+import { postCreateReel } from "@/api/album";
 import queryClient from "@/api/queryClient";
 import { tripKeys } from "@/hooks/queries/gallery/tripKeys";
 import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
@@ -110,13 +110,10 @@ export default function Album() {
   const {
     status: reelStatus,
     outputUrl,
-    // isPolling,
-    // isCreating,
-    // retryCreate,
   } = useReels({
     tripId,
     endDate,
-    enabled: true, // 여기서 isCompleted 넣지 말고, 훅이 ready로 알아서 collecting 처리하는 게 깔끔함
+    enabled: !!album, // 앨범 데이터 로딩 완료 후에만 릴 상태 조회
   });
 
   const currentDay = mediaData[activeIndex];
@@ -188,6 +185,15 @@ export default function Album() {
             setIsEndingTrip(true);
             try {
               await endTrip(tripId);
+
+              // 여행 종료 직후에만 릴 생성 요청 (이 시점에서만 POST)
+              try {
+                await postCreateReel(tripId);
+              } catch (reelErr) {
+                // 릴 아이템이 없는 등의 이유로 실패해도 여행 종료는 진행
+                console.warn("[Reel create skipped]", reelErr);
+              }
+
               await queryClient.invalidateQueries({ queryKey: tripKeys.all });
               await queryClient.invalidateQueries({
                 queryKey: albumKeys.detail(tripId),
@@ -586,20 +592,10 @@ export default function Album() {
                 }}
               >
                 <View style={styles.thumbWrap}>
-                  {reelStatus === "done" && outputUrl ? (
+                  {outputUrl ? (
                     <VideoThumbItem videoUrl={outputUrl} />
                   ) : (
                     <View style={styles.reelPlaceholder} />
-                  )}
-
-                  {/* 상태 오버레이 */}
-                  {reelStatus === "queued" && (
-                    <View style={styles.reelOverlay}>
-                      <>
-                        <ActivityIndicator />
-                        <Text style={styles.reelStatusText}>생성 중..</Text>
-                      </>
-                    </View>
                   )}
                 </View>
               </Pressable>

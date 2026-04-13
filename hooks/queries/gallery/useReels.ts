@@ -1,8 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-import { getReel, postCreateReel } from "@/api/album";
-import type { ReelResult } from "@/types/gallery";
+import { getReel } from "@/api/album";
 import { getTodayYmd, isCompletedTrip } from "@/utils/date";
 
 type ClientReelStatus =
@@ -16,106 +15,41 @@ type ClientReelStatus =
 type Params = {
   tripId: number;
   endDate: string;
-  initialReelId?: number | null;
   enabled?: boolean;
 };
 
+/**
+ * 릴 상태를 GET + 폴링으로만 추적하는 훅.
+ * POST(릴 생성)는 여행 종료 시점에만 호출해야 하므로 이 훅에서는 하지 않는다.
+ */
 export const useReels = ({
   tripId,
   endDate,
-  initialReelId = null,
   enabled = true,
 }: Params) => {
+  // endDate가 비어있으면 아직 앨범 데이터 미로딩 → ready=false
   const ready = useMemo(
-    () => isCompletedTrip(endDate, getTodayYmd()),
+    () => !!endDate && endDate.length >= 10 && isCompletedTrip(endDate, getTodayYmd()),
     [endDate],
   );
 
   const canRun = enabled && ready && tripId > 0;
 
-  const [reelId, setReelId] = useState<number | null>(initialReelId);
-  const [checkedExisting, setCheckedExisting] = useState(false);
-  const hasPosted = useRef(false);
-
-  useEffect(() => {
-    setReelId(initialReelId);
-    setCheckedExisting(false);
-    hasPosted.current = false;
-  }, [tripId, initialReelId]);
-
   /*
-  1단계: 마운트 시 GET으로 기존 릴스 확인
-  */
-
-  const existingReelQuery = useQuery({
-    queryKey: ["reel-check", tripId],
-    queryFn: () => getReel(tripId),
-    enabled: canRun && !checkedExisting,
-    staleTime: 0,
-    retry: false,
-  });
-
-  // 기존 릴스 확인: 렌더링 진행/완료 상태면 reelId 세팅 → POST 스킵
-  // "collecting"은 아직 POST(createReel)가 필요한 상태이므로 스킵하지 않음
-  useEffect(() => {
-    if (!canRun || checkedExisting) return;
-    if (existingReelQuery.isLoading) return;
-
-    if (existingReelQuery.data) {
-      const { status, reelId: existingId } = existingReelQuery.data;
-      const isRenderStarted =
-        status === "queued" ||
-        status === "rendering" ||
-        status === "done" ||
-        status === "failed";
-      if (isRenderStarted && existingId != null) {
-        setReelId(existingId);
-      }
-    }
-    setCheckedExisting(true);
-  }, [canRun, checkedExisting, existingReelQuery.isLoading, existingReelQuery.data]);
-
-  /*
-  2단계: POST — 기존 릴스 확인 후 없을 때만 생성
-  */
-
-  const createMutation = useMutation({
-    mutationFn: postCreateReel,
-    onSuccess: (result: ReelResult) => {
-      setReelId(result.reelId);
-    },
-    onError: (error) => {
-      console.error("[Reel create error]", error);
-    },
-  });
-
-  useEffect(() => {
-    if (!canRun) return;
-    if (!checkedExisting) return; // 기존 릴스 확인 전에는 POST 하지 않음
-    if (reelId != null) return;
-    if (hasPosted.current) return; // 이미 POST 했으면 절대 재호출 안 함
-    if (createMutation.isPending) return;
-    if (createMutation.isError) return;
-
-    hasPosted.current = true;
-    createMutation.mutate(tripId);
-  }, [canRun, checkedExisting, reelId, tripId, createMutation.isPending, createMutation.isError, createMutation.mutate]);
-
-  /*
-  3단계: GET 폴링 — reelId가 있으면 상태 추적
+  GET 폴링 — 릴 상태 추적 (queued/rendering 중일 때 3초 간격)
   */
 
   const reelQuery = useQuery({
     queryKey: ["reel", tripId],
     queryFn: () => getReel(tripId),
-    enabled: canRun && reelId != null,
+    enabled: canRun,
 
     refetchInterval: (query) => {
       const status = query.state.data?.status;
 
       if (!status) return 3000;
 
-      if (status === "done" || status === "failed" || status === "none")
+      if (status === "done" || status === "failed" || status === "none" || status === "collecting")
         return false;
 
       return 3000;
@@ -130,7 +64,6 @@ export const useReels = ({
 
   const status: ClientReelStatus = (() => {
     if (!canRun) return "collecting";
-    if (createMutation.isError) return "failed";
 
     const server = reelQuery.data?.status;
 
@@ -138,9 +71,8 @@ export const useReels = ({
     if (server === "failed") return "failed";
     if (server === "rendering") return "rendering";
     if (server === "queued") return "queued";
+    if (server === "collecting") return "collecting";
     if (server === "none") return "none";
-
-    if (!server) return createMutation.isPending ? "queued" : "none";
 
     return "none";
   })();
@@ -151,23 +83,16 @@ export const useReels = ({
   return {
     canRun,
     ready,
-    checkedExisting,
 
-    reelId,
+    reelId: reelQuery.data?.reelId ?? null,
     status,
     outputUrl,
 
     reel: reelQuery.data,
 
-    isCreating: createMutation.isPending,
     isPolling: reelQuery.isFetching,
 
     refetch: reelQuery.refetch,
-    error: createMutation.error ?? reelQuery.error,
-
-    retryCreate: () => {
-      if (!canRun) return;
-      createMutation.mutate(tripId);
-    },
+    error: reelQuery.error,
   };
 };
