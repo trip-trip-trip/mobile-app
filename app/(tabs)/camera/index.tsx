@@ -435,11 +435,10 @@ const CameraScreen = () => {
         ) : (
           <>
             <CameraView
-              key={mode}
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
-              mode={mode as any}
+              mode={mode === "photo" ? "picture" : "video"}
               onCameraReady={() => setIsCameraReady(true)}
             />
             {/* ShotIndicator에도 현재 번호 연동 가능 */}
@@ -501,7 +500,6 @@ const CameraScreen = () => {
                   <Pressable
                     key={item}
                     onPress={() => {
-                      setIsCameraReady(false);
                       setMode(item);
                     }}
                     style={styles.modeButtonWrapper}
