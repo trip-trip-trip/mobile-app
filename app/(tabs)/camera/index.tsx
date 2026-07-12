@@ -5,7 +5,11 @@ import SwitchCameraButton from "@/components/camera/SwitchCameraButton";
 import FullButton from "@/components/FullButton";
 
 import { BlurView } from "expo-blur";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import {
+  CameraView,
+  useCameraPermissions,
+  useMicrophonePermissions,
+} from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { Accelerometer, Gyroscope } from "expo-sensors";
@@ -14,6 +18,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -42,6 +49,7 @@ import { useQuery } from "@tanstack/react-query";
 const CameraScreen = () => {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
   const [mode, setMode] = useState<"photo" | "video">("photo");
   const [isRecording, setIsRecording] = useState(false);
@@ -248,6 +256,11 @@ const CameraScreen = () => {
     if (!permission.granted) requestPermission();
   }, [permission, requestPermission]);
 
+  useEffect(() => {
+    if (!micPermission) return;
+    if (!micPermission.granted) requestMicPermission();
+  }, [micPermission, requestMicPermission]);
+
   if (!permission?.granted) {
     return <View style={{ flex: 1, backgroundColor: "black" }} />;
   }
@@ -396,7 +409,10 @@ const CameraScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       {/* 1. 하드코딩 제거된 헤더 연동 */}
       <CameraHeader currentDay={currentDay} totalDays={totalDays} />
 
@@ -423,7 +439,7 @@ const CameraScreen = () => {
             <Image
               source={require("@/assets/camera/photoframe.png")}
               style={styles.photoFrame}
-              resizeMode="contain"
+              resizeMode="cover"
             />
             <View style={styles.resultTextWrapper}>
               <Text style={styles.resultTitle}>촬영 완료!</Text>
@@ -438,7 +454,8 @@ const CameraScreen = () => {
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
-              mode={mode as any}
+              mirror={facing === "front"}
+              mode={mode === "photo" ? "picture" : "video"}
               onCameraReady={() => setIsCameraReady(true)}
             />
             {/* ShotIndicator에도 현재 번호 연동 가능 */}
@@ -457,6 +474,8 @@ const CameraScreen = () => {
               placeholderTextColor="#888"
               value={comment}
               onChangeText={setComment}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
             />
             <View style={{ gap: 10 }}>
               <Pressable disabled={isUploading}>
@@ -499,7 +518,9 @@ const CameraScreen = () => {
                 {(["photo", "video"] as const).map((item) => (
                   <Pressable
                     key={item}
-                    onPress={() => setMode(item)}
+                    onPress={() => {
+                      setMode(item);
+                    }}
                     style={styles.modeButtonWrapper}
                   >
                     <LinearGradient
@@ -550,7 +571,7 @@ const CameraScreen = () => {
           </>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -588,12 +609,9 @@ const styles = StyleSheet.create({
   },
 
   photoFrame: {
-    position: "absolute",
-    width: 390,
-    height: 225,
-    alignSelf: "center",
-    top: "50%",
-    transform: [{ translateY: -112.5 }],
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
 
   resultTextWrapper: {
@@ -704,6 +722,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+    top: 0,
     bottom: 0,
     alignItems: "center",
   },
@@ -722,6 +741,7 @@ const styles = StyleSheet.create({
   gradientBorder: {
     padding: 2,
     borderRadius: 20,
+    overflow: "hidden",
   },
 
   activeButton: {

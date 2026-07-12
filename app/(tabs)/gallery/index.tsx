@@ -5,14 +5,15 @@ import Header from "@/components/Header";
 import CameraIcon from "@/components/icons/CameraIcon";
 import SettingIcon from "@/components/icons/SettingIcon";
 import { colors } from "@/constants/colors";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useGalleryTripsQuery } from "@/hooks/queries/gallery/useAllTrips";
+import { useCallback } from "react";
 
 export default function Gallery() {
   const router = useRouter();
-  const { data } = useGalleryTripsQuery();
+  const { data, refetch } = useGalleryTripsQuery();
 
   // console.log(
   //   "🔑 ACCESS TOKEN (axios header):",
@@ -24,6 +25,12 @@ export default function Gallery() {
   const completedTrips = data?.completedTrips ?? [];
 
   const activeTripId = activeTripInfo?.id ?? 0;
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   // 새로운 여행 시작하기 버튼 클릭시
   const handlePressStartTrip = () => {
@@ -48,7 +55,7 @@ export default function Gallery() {
             <Pressable
               onPress={() =>
                 router.push(
-                  `/gallery/${activeTripInfo.id}?status=${activeTripInfo.status}`
+                  `/gallery/${activeTripInfo.id}?status=${activeTripInfo.status}`,
                 )
               }
             >

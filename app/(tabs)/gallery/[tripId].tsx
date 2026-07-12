@@ -17,7 +17,6 @@ import * as Sharing from "expo-sharing";
 
 import { Feather } from "@expo/vector-icons";
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
@@ -42,6 +41,7 @@ import { getNextDay, getTodayYmd, isCompletedTrip } from "@/utils/date";
 import { formatCoordLabelDms } from "@/utils/location";
 import { BlurView } from "expo-blur";
 import { endTrip } from "@/api/trip";
+import { postCreateReel } from "@/api/album";
 import queryClient from "@/api/queryClient";
 import { tripKeys } from "@/hooks/queries/gallery/tripKeys";
 import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
@@ -101,26 +101,23 @@ export default function Album() {
   );
 
   const endDate = albumTitleData.endDate;
-  // 종료 버튼 표시: status 기준 (날짜가 아닌 실제 완료 여부)
-  const tripStatus = params.status;
-  const canEndTrip = tripStatus !== "COMPLETED";
   // 릴 표시 조건: 날짜 기준 유지 (endDate <= today 이면 릴 조회 가능)
   const isCompleted = isCompletedTrip(endDate, getTodayYmd());
+  // 종료 버튼 표시: status param이 ACTIVE일 때만 (param 없으면 종료 버튼 숨김)
+  const tripStatus = params.status;
+  const canEndTrip = tripStatus === "ACTIVE";
 
   const {
     status: reelStatus,
     outputUrl,
-    // isPolling,
-    // isCreating,
-    // retryCreate,
   } = useReels({
     tripId,
     endDate,
-    enabled: true, // 여기서 isCompleted 넣지 말고, 훅이 ready로 알아서 collecting 처리하는 게 깔끔함
+    enabled: !!album, // 앨범 데이터 로딩 완료 후에만 릴 상태 조회
   });
 
   const currentDay = mediaData[activeIndex];
-  const isTodayCurrentDay = currentDay?.date === getTodayYmd();
+  const isTodayCurrentDay = !isCompleted && currentDay?.date === getTodayYmd();
   // console.log("VIDEO", currentDay?.videos);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -188,6 +185,15 @@ export default function Album() {
             setIsEndingTrip(true);
             try {
               await endTrip(tripId);
+
+              // 여행 종료 직후에만 릴 생성 요청 (이 시점에서만 POST)
+              try {
+                await postCreateReel(tripId);
+              } catch (reelErr) {
+                // 릴 아이템이 없는 등의 이유로 실패해도 여행 종료는 진행
+                console.warn("[Reel create skipped]", reelErr);
+              }
+
               await queryClient.invalidateQueries({ queryKey: tripKeys.all });
               await queryClient.invalidateQueries({
                 queryKey: albumKeys.detail(tripId),
@@ -319,7 +325,7 @@ export default function Album() {
     // 일자 - day 1, 2, ..
     const dayNum = index + 1;
     const fourPhotos = item.photos.slice(0, 4); // 네컷 캡처
-    const isBlur = item.date === getTodayYmd();
+    const isBlur = !isCompleted && item.date === getTodayYmd();
     const nextDay = getNextDay(item.date);
 
     const blockIfToday = () => {
@@ -542,7 +548,7 @@ export default function Album() {
         <View style={styles.videoGrid}>
           {/* 3초 영상 합본 - 완료된 여행일 때만 조회 */}
           {isCompleted && reelStatus === "done" && (
-            <View style={styles.videoItem}>
+            <View style={styles.reelItem}>
               <Pressable
                 onPress={() => {
                   // if (reelStatus === "queued") {
@@ -585,29 +591,25 @@ export default function Album() {
                   setSelectedMeta({ date: endDate, dayLabel: "REEL" });
                 }}
               >
-                <View style={styles.thumbWrap}>
-                  {reelStatus === "done" && outputUrl ? (
+                <View style={styles.reelThumbWrap}>
+                  {outputUrl ? (
                     <VideoThumbItem videoUrl={outputUrl} />
                   ) : (
                     <View style={styles.reelPlaceholder} />
                   )}
-
-                  {/* 상태 오버레이 */}
-                  {reelStatus === "queued" && (
-                    <View style={styles.reelOverlay}>
-                      <>
-                        <ActivityIndicator />
-                        <Text style={styles.reelStatusText}>생성 중..</Text>
-                      </>
-                    </View>
-                  )}
+                  <View style={styles.reelBadge}>
+                    <Feather name="film" size={12} color={colors.CREAM} />
+                    <Text style={styles.reelBadgeText}>릴스 합본</Text>
+                  </View>
                 </View>
               </Pressable>
             </View>
           )}
 
-          {/* 기존 day 영상들 */}
-          {currentDay?.videos.map((video, idx) => {
+          {/* 기존 day 영상들 (릴스 합본 영상은 제외) */}
+          {currentDay?.videos
+            .filter((v) => !outputUrl || v.url !== outputUrl)
+            .map((video, idx) => {
             const nextDay = getNextDay(currentDay.date);
             const onPress = () => {
               if (isTodayCurrentDay) {
@@ -792,6 +794,36 @@ const styles = StyleSheet.create({
   videoItem: {
     width: "50%",
     padding: 2,
+  },
+  reelItem: {
+    width: "100%",
+    padding: 2,
+    marginBottom: 4,
+  },
+  reelThumbWrap: {
+    position: "relative",
+    aspectRatio: 16 / 9,
+    overflow: "hidden",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.RED,
+  },
+  reelBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: colors.INK,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  reelBadgeText: {
+    color: colors.CREAM,
+    fontFamily: "Orbit",
+    fontSize: 11,
   },
   reelOverlay: {
     ...StyleSheet.absoluteFillObject,

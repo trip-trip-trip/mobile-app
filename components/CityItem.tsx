@@ -1,11 +1,18 @@
 import { colors } from "@/constants";
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  ImageSourcePropType,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 interface CityItemProps {
   title: string;
   description: string;
-  imageUri?: string;
+  imageSource?: ImageSourcePropType;
   isSelected: boolean;
   onPress: () => void;
 }
@@ -13,7 +20,7 @@ interface CityItemProps {
 function CityItem({
   title,
   description,
-  imageUri,
+  imageSource,
   isSelected,
   onPress,
 }: CityItemProps) {
@@ -28,8 +35,8 @@ function CityItem({
     >
       <View style={styles.contentContainer}>
         <View style={styles.imageContainer}>
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.image} />
+          {imageSource ? (
+            <Image source={imageSource} style={styles.image} />
           ) : (
             <View style={styles.placeholderImage} />
           )}

@@ -1,6 +1,6 @@
 import queryClient from "@/api/queryClient";
 import { AuthProvider, useAuthContext } from "@/contexts/AuthContext";
-import useDeviceToken from "@/hooks/useDeviceToken";
+import useRequestNotificationPermission from "@/hooks/useRequestNotificationPermission";
 import { QueryClientProvider } from "@tanstack/react-query";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { useFonts } from "expo-font";
@@ -14,8 +14,10 @@ SplashScreen.preventAutoHideAsync();
 const isExpoGo =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-console.log("[ENV] executionEnvironment:", Constants.executionEnvironment);
-console.log("[ENV] isExpoGo:", isExpoGo);
+if (__DEV__) {
+  console.log("[ENV] executionEnvironment:", Constants.executionEnvironment);
+  console.log("[ENV] isExpoGo:", isExpoGo);
+}
 
 // 포어그라운드 상태에서도 알림 표시 (Expo Go 제외 — import만으로 크래시)
 if (!isExpoGo) {
@@ -53,7 +55,29 @@ function AuthGuard() {
 }
 
 export default function RootLayout() {
-  useDeviceToken();
+  useRequestNotificationPermission();
+  const router = useRouter();
+
+  // 알림 탭 시 카메라 화면으로 이동
+  useEffect(() => {
+    if (isExpoGo) return;
+    const Notifications =
+      require("expo-notifications") as typeof import("expo-notifications");
+
+    // 포그라운드/백그라운드: 알림 탭 리스너
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      () => {
+        router.push("/(tabs)/camera");
+      }
+    );
+
+    // 종료 상태에서 알림 탭으로 재실행된 경우 (동기 API)
+    const lastResponse = Notifications.getLastNotificationResponse();
+    if (lastResponse) router.push("/(tabs)/camera");
+
+    return () => subscription.remove();
+  }, []);
+
   const [fontsLoaded, fontError] = useFonts({
     "MonoplexKR-Thin": require("../assets/fonts/MonoplexKR-Thin.ttf"),
     "MonoplexKR-ThinItalic": require("../assets/fonts/MonoplexKR-ThinItalic.ttf"),

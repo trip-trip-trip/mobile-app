@@ -1,8 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-import { getReel, postCreateReel } from "@/api/album";
-import type { ReelResult } from "@/types/gallery";
+import { getReel } from "@/api/album";
 import { getTodayYmd, isCompletedTrip } from "@/utils/date";
 
 type ClientReelStatus =
@@ -16,71 +15,41 @@ type ClientReelStatus =
 type Params = {
   tripId: number;
   endDate: string;
-  initialReelId?: number | null;
   enabled?: boolean;
 };
 
+/**
+ * 릴 상태를 GET + 폴링으로만 추적하는 훅.
+ * POST(릴 생성)는 여행 종료 시점에만 호출해야 하므로 이 훅에서는 하지 않는다.
+ */
 export const useReels = ({
   tripId,
   endDate,
-  initialReelId = null,
   enabled = true,
 }: Params) => {
+  // endDate가 비어있으면 아직 앨범 데이터 미로딩 → ready=false
   const ready = useMemo(
-    () => isCompletedTrip(endDate, getTodayYmd()),
-    [endDate]
+    () => !!endDate && endDate.length >= 10 && isCompletedTrip(endDate, getTodayYmd()),
+    [endDate],
   );
 
   const canRun = enabled && ready && tripId > 0;
 
-  const [reelId, setReelId] = useState<number | null>(initialReelId);
-
-  useEffect(() => {
-    setReelId(initialReelId);
-  }, [tripId, initialReelId]);
-
   /*
-  POST
-  */
-
-  const createMutation = useMutation({
-    mutationFn: postCreateReel,
-    onSuccess: (result: ReelResult) => {
-      setReelId(result.reelId);
-    },
-    onError: (error) => {
-      console.error("[Reel create error]", error);
-    },
-  });
-
-  /*
-  여행 완료 && reelId 없음 -> 생성
-  */
-
-  useEffect(() => {
-    if (!canRun) return;
-    if (reelId != null) return;
-    if (createMutation.isPending) return;
-    if (createMutation.isError) return; // 에러 후 무한 재시도 방지
-
-    createMutation.mutate(tripId);
-  }, [canRun, reelId, tripId, createMutation.isPending, createMutation.isError, createMutation.mutate]);
-
-  /*
-  GET
+  GET 폴링 — 릴 상태 추적 (queued/rendering 중일 때 3초 간격)
   */
 
   const reelQuery = useQuery({
     queryKey: ["reel", tripId],
     queryFn: () => getReel(tripId),
-    enabled: canRun && reelId != null,
+    enabled: canRun,
 
     refetchInterval: (query) => {
       const status = query.state.data?.status;
 
       if (!status) return 3000;
 
-      if (status === "done" || status === "failed" || status === "none")
+      if (status === "done" || status === "failed" || status === "none" || status === "collecting")
         return false;
 
       return 3000;
@@ -95,7 +64,6 @@ export const useReels = ({
 
   const status: ClientReelStatus = (() => {
     if (!canRun) return "collecting";
-    if (createMutation.isError) return "failed";
 
     const server = reelQuery.data?.status;
 
@@ -103,9 +71,8 @@ export const useReels = ({
     if (server === "failed") return "failed";
     if (server === "rendering") return "rendering";
     if (server === "queued") return "queued";
+    if (server === "collecting") return "collecting";
     if (server === "none") return "none";
-
-    if (!server) return createMutation.isPending ? "queued" : "none";
 
     return "none";
   })();
@@ -117,21 +84,15 @@ export const useReels = ({
     canRun,
     ready,
 
-    reelId,
+    reelId: reelQuery.data?.reelId ?? null,
     status,
     outputUrl,
 
     reel: reelQuery.data,
 
-    isCreating: createMutation.isPending,
     isPolling: reelQuery.isFetching,
 
     refetch: reelQuery.refetch,
-    error: createMutation.error ?? reelQuery.error,
-
-    retryCreate: () => {
-      if (!canRun) return;
-      createMutation.mutate(tripId);
-    },
+    error: reelQuery.error,
   };
 };
