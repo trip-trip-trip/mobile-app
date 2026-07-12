@@ -18,6 +18,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -406,7 +409,10 @@ const CameraScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       {/* 1. 하드코딩 제거된 헤더 연동 */}
       <CameraHeader currentDay={currentDay} totalDays={totalDays} />
 
@@ -433,7 +439,7 @@ const CameraScreen = () => {
             <Image
               source={require("@/assets/camera/photoframe.png")}
               style={styles.photoFrame}
-              resizeMode="contain"
+              resizeMode="cover"
             />
             <View style={styles.resultTextWrapper}>
               <Text style={styles.resultTitle}>촬영 완료!</Text>
@@ -448,6 +454,7 @@ const CameraScreen = () => {
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
+              mirror={facing === "front"}
               mode={mode === "photo" ? "picture" : "video"}
               onCameraReady={() => setIsCameraReady(true)}
             />
@@ -467,6 +474,8 @@ const CameraScreen = () => {
               placeholderTextColor="#888"
               value={comment}
               onChangeText={setComment}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
             />
             <View style={{ gap: 10 }}>
               <Pressable disabled={isUploading}>
@@ -562,7 +571,7 @@ const CameraScreen = () => {
           </>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -600,12 +609,9 @@ const styles = StyleSheet.create({
   },
 
   photoFrame: {
-    position: "absolute",
-    width: 390,
-    height: 225,
-    alignSelf: "center",
-    top: "50%",
-    transform: [{ translateY: -112.5 }],
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
 
   resultTextWrapper: {
