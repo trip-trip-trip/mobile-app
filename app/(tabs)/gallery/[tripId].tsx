@@ -548,7 +548,7 @@ export default function Album() {
         <View style={styles.videoGrid}>
           {/* 3초 영상 합본 - 완료된 여행일 때만 조회 */}
           {isCompleted && reelStatus === "done" && (
-            <View style={styles.videoItem}>
+            <View style={styles.reelItem}>
               <Pressable
                 onPress={() => {
                   // if (reelStatus === "queued") {
@@ -591,12 +591,16 @@ export default function Album() {
                   setSelectedMeta({ date: endDate, dayLabel: "REEL" });
                 }}
               >
-                <View style={styles.thumbWrap}>
+                <View style={styles.reelThumbWrap}>
                   {outputUrl ? (
                     <VideoThumbItem videoUrl={outputUrl} />
                   ) : (
                     <View style={styles.reelPlaceholder} />
                   )}
+                  <View style={styles.reelBadge}>
+                    <Feather name="film" size={12} color={colors.CREAM} />
+                    <Text style={styles.reelBadgeText}>릴스 합본</Text>
+                  </View>
                 </View>
               </Pressable>
             </View>
@@ -790,6 +794,36 @@ const styles = StyleSheet.create({
   videoItem: {
     width: "50%",
     padding: 2,
+  },
+  reelItem: {
+    width: "100%",
+    padding: 2,
+    marginBottom: 4,
+  },
+  reelThumbWrap: {
+    position: "relative",
+    aspectRatio: 16 / 9,
+    overflow: "hidden",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.RED,
+  },
+  reelBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: colors.INK,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  reelBadgeText: {
+    color: colors.CREAM,
+    fontFamily: "Orbit",
+    fontSize: 11,
   },
   reelOverlay: {
     ...StyleSheet.absoluteFillObject,
