@@ -16,6 +16,7 @@ import FullButton from "@/components/FullButton";
 import Header from "@/components/Header";
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import { colors } from "@/constants";
+import { PLACE_IMAGES } from "@/constants/placeImages";
 import { useGetPlaces } from "@/hooks/queries/useTripQuery";
 import type { PlaceRes } from "@/types/trip";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -273,6 +274,7 @@ export default function TripsIndex() {
             <CityItem
               title={item.name}
               description={item.description}
+              imageSource={PLACE_IMAGES[item.id]}
               isSelected={selectedIds.includes(item.id)}
               onPress={() => handleCityPress(item.id)}
             />
