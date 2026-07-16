@@ -434,10 +434,12 @@ const CameraScreen = () => {
               </View>
             )}
 
+            {/* 장식용 프레임 — 아래 깔린 '다시 찍기' 버튼이 눌리도록 터치 통과 */}
             <Image
               source={require("@/assets/camera/photoframe.png")}
               style={styles.photoFrame}
               resizeMode="cover"
+              pointerEvents="none"
             />
             <View style={styles.resultTextWrapper}>
               <Text style={styles.resultTitle}>촬영 완료!</Text>
