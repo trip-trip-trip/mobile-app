@@ -6,6 +6,7 @@ import SettingActivate from "@/components/setting/PushNotificationActivate";
 import SettingTimeslot from "@/components/setting/PushNotificationTimeslot";
 import { colors } from "@/constants/colors";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useGetMyProfile } from "@/hooks/queries/useAuth";
 import { useGetNotificationSettings } from "@/hooks/queries/useSettingQuery";
 import {
   useUpdateNotificationSetting,
@@ -15,13 +16,16 @@ import {
 } from "@/hooks/queries/useSettingMutation";
 import { SLOT_LABEL_MAP, SLOT_CODE_TO_LABEL } from "@/types/setting";
 import type { SlotCode } from "@/types/setting";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 const SettingScreen = () => {
   const { user } = useAuthContext();
+
+  // 서버 프로필 (저장 후 invalidate로 갱신됨) — 컨텍스트보다 최신이므로 우선 사용
+  const { data: myProfile } = useGetMyProfile();
+  const profileSource = myProfile ?? user;
 
   // 알림 설정 로드
   const { data: notifSettings } = useGetNotificationSettings();
@@ -43,22 +47,22 @@ const SettingScreen = () => {
   // 한국어 레이블 set으로 관리
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
 
-  // user 로드 후 userId 초기값 동기화 (AuthContext 비동기 로딩 대응)
-  useEffect(() => {
-    if (user?.userId) {
-      setUserId(user.userId);
-    }
-  }, [user?.userId]);
+  // 탭 화면은 벗어나도 언마운트되지 않아 저장 안 한 편집 상태가 남는다.
+  // 화면 재진입 시(및 원본 데이터 로드/갱신 시) 편집 상태를 원본 값으로 리셋.
+  useFocusEffect(
+    useCallback(() => {
+      setUserId(profileSource?.userId ?? "");
+      setProfileImgUri(profileSource?.avatarUrl ?? null);
+      setProfileImgChanged(false);
 
-  // 서버 데이터 로드 후 초기값 세팅
-  useEffect(() => {
-    if (notifSettings) {
-      setMomentEnabled(notifSettings.momentEnabled);
-      setSelectedSlots(
-        new Set(notifSettings.slots.map((code) => SLOT_CODE_TO_LABEL[code])),
-      );
-    }
-  }, [notifSettings]);
+      if (notifSettings) {
+        setMomentEnabled(notifSettings.momentEnabled);
+        setSelectedSlots(
+          new Set(notifSettings.slots.map((code) => SLOT_CODE_TO_LABEL[code])),
+        );
+      }
+    }, [profileSource?.userId, profileSource?.avatarUrl, notifSettings]),
+  );
 
   const handleProfileImgChange = (uri: string) => {
     setProfileImgUri(uri);
@@ -90,7 +94,7 @@ const SettingScreen = () => {
     const promises: Promise<unknown>[] = [];
 
     // 프로필 변경사항이 있으면 저장
-    const userIdChanged = userId !== (user?.userId ?? "");
+    const userIdChanged = userId !== (profileSource?.userId ?? "");
     if (userIdChanged || profileImgChanged) {
       promises.push(
         updateProfile.mutateAsync({
@@ -151,10 +155,7 @@ const SettingScreen = () => {
     updateSlots.isPending;
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.CLOUD }}
-      edges={["top"]}
-    >
+    <View style={{ flex: 1, backgroundColor: colors.CLOUD }}>
       <Header
         label="setting"
         backgroundColor={colors.CLOUD}
@@ -191,7 +192,7 @@ const SettingScreen = () => {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

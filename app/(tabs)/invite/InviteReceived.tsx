@@ -6,6 +6,11 @@ import GoBackIcon from "@/components/icons/GoBackIcon";
 import InviteCard from "@/components/invite/InviteCard";
 import { colors } from "@/constants/colors";
 import { acceptInvite, getInviteInfo } from "@/api/invite";
+import { endTrip } from "@/api/trip";
+import { postCreateReel } from "@/api/album";
+import queryClient from "@/api/queryClient";
+import { tripKeys } from "@/hooks/queries/gallery/tripKeys";
+import { useGalleryTripsQuery } from "@/hooks/queries/gallery/useAllTrips";
 import { isAxiosError } from "axios";
 import type { InviteInfo } from "@/types/invite";
 
@@ -15,6 +20,12 @@ export default function InviteReceivedScreen() {
 
   const [inviteData, setInviteData] = useState<InviteInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+
+  // 진행 중(ACTIVE) 여행이 있으면 초대 수락 전에 종료 여부를 확인
+  const { data: tripsData } = useGalleryTripsQuery();
+  const ongoingTrip =
+    tripsData?.activeTrip?.status === "ACTIVE" ? tripsData.activeTrip : null;
 
   useEffect(() => {
     const fetchInviteDetail = async () => {
@@ -33,14 +44,11 @@ export default function InviteReceivedScreen() {
     fetchInviteDetail();
   }, [code]);
 
-  const handleAccept = async () => {
-    if (!code) {
-      Alert.alert("오류", "초대 코드가 없습니다.");
-      return;
-    }
-
+  const joinTrip = async () => {
+    if (!code) return;
     try {
       await acceptInvite(code);
+      await queryClient.invalidateQueries({ queryKey: tripKeys.all });
       router.replace("/(tabs)/gallery");
     } catch (error) {
       if (isAxiosError(error)) {
@@ -50,6 +58,69 @@ export default function InviteReceivedScreen() {
       }
       Alert.alert("오류", "잠시 후 다시 시도해주세요.");
     }
+  };
+
+  // 진행 중인 여행 종료 후 초대 수락
+  const endOngoingTripAndJoin = async (tripId: number) => {
+    setProcessing(true);
+    try {
+      await endTrip(tripId);
+
+      // 여행 종료 직후 릴 생성 요청 (실패해도 참여는 진행)
+      try {
+        await postCreateReel(tripId);
+      } catch (reelErr) {
+        console.warn("[Reel create skipped]", reelErr);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: tripKeys.all });
+      await joinTrip();
+    } catch (error) {
+      console.error("[End trip before join error]", error);
+      Alert.alert(
+        "오류",
+        "진행 중인 여행 종료에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!code) {
+      Alert.alert("오류", "초대 코드가 없습니다.");
+      return;
+    }
+    if (processing) return;
+
+    // 진행 중인 여행이 없으면 바로 참여
+    if (!ongoingTrip) {
+      setProcessing(true);
+      try {
+        await joinTrip();
+      } finally {
+        setProcessing(false);
+      }
+      return;
+    }
+
+    const memberCount = ongoingTrip.members?.length ?? 0;
+    const isSharedTrip = memberCount >= 2;
+
+    Alert.alert(
+      "진행 중인 여행 종료",
+      isSharedTrip
+        ? `나를 포함해 ${memberCount}명이 '${ongoingTrip.title}' 여행을 진행 중입니다.\n지금 참여하면 모든 멤버의 여행이 즉시 종료되고 사진 현상이 시작됩니다.`
+        : `진행 중인 '${ongoingTrip.title}' 여행이 있습니다.\n지금 참여하면 이 여행이 즉시 종료되고 사진 현상이 시작됩니다.`,
+      [
+        { text: "취소", style: "cancel" },
+        {
+          text: isSharedTrip ? "모두 종료하고 참여" : "종료하고 참여",
+          style: "destructive",
+          onPress: () => endOngoingTripAndJoin(ongoingTrip.id),
+        },
+      ],
+    );
   };
 
   const handleDecline = () => {

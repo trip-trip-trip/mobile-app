@@ -54,9 +54,8 @@ const styles = StyleSheet.create({
 
   title: {
     color: "white",
-    fontFamily: "Monoplex KR",
+    fontFamily: "MonoplexKR-SemiBold",
     fontSize: 16,
-    fontWeight: "600",
   },
   dayWrapper: {
     alignItems: "center",

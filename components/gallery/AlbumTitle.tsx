@@ -19,9 +19,14 @@ type AlbumData = {
 type AlbumDataProps = {
   data: AlbumData;
   isTraveling: boolean;
+  onPressMembers?: () => void; // 멤버 아바타 눌러 참여자 목록으로 이동
 };
 
-export const AlbumTitle = ({ data, isTraveling }: AlbumDataProps) => {
+export const AlbumTitle = ({
+  data,
+  isTraveling,
+  onPressMembers,
+}: AlbumDataProps) => {
   return (
     <View style={styles.topSection}>
       {isTraveling && (
@@ -31,7 +36,14 @@ export const AlbumTitle = ({ data, isTraveling }: AlbumDataProps) => {
       )}
       <Title>{data.title}</Title>
       <View style={styles.infoRow}>
-        <SharedProfiles data={data.memberProfileUrls} size={25} />
+        <TouchableOpacity
+          onPress={onPressMembers}
+          disabled={!onPressMembers}
+          style={styles.membersButton}
+        >
+          <SharedProfiles data={data.memberProfileUrls} size={25} />
+          {onPressMembers && <Text style={styles.membersText}>멤버 보기</Text>}
+        </TouchableOpacity>
         {isTraveling && (
           <TouchableOpacity>
             <Text
@@ -81,6 +93,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  membersButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  membersText: {
+    fontSize: 12,
+    color: colors.NAVY,
+    textDecorationLine: "underline",
+    fontFamily: "Monoplex KR",
+  },
   inviteText: {
     fontSize: 12,
     color: colors.NAVY,

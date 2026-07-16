@@ -113,3 +113,11 @@ export type DetailMediaItem = {
   lat?: number | null;
   lng?: number | null;
 };
+
+// 여행 참여자 (GET /trips/{tripId}/members)
+export type TripMember = {
+  id: number;
+  userId: string;
+  avatarUrl: string | null;
+  role: string;
+};

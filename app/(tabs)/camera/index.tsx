@@ -1,3 +1,4 @@
+import CameraClock from "@/components/camera/CameraClock";
 import CameraHeader from "@/components/camera/CameraHeader";
 import PicProgress from "@/components/camera/PicProgress";
 import ShotIndicator from "@/components/camera/ShotIndicator";
@@ -44,6 +45,7 @@ import { uploadMedia } from "@/api/media";
 import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
 import { useGalleryTripsQuery } from "@/hooks/queries/gallery/useAllTrips";
 import { useDailyShotLimit } from "@/hooks/queries/useDailyShotLimit";
+import { getTodayUtcYmd, getTodayYmd } from "@/utils/date";
 import { useQuery } from "@tanstack/react-query";
 
 const CameraScreen = () => {
@@ -102,16 +104,10 @@ const CameraScreen = () => {
     [tripDetail?.result.days]
   );
 
-  const todayKstYmd = useMemo(() => {
-    const now = new Date();
-    return new Date(now.getTime() + 9 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
-  }, []);
+  // 디바이스 로컬 기준 오늘 날짜 (KST +9 하드코딩 제거 — 어느 타임존에서든 사용자 감각과 일치)
+  const todayLocalYmd = useMemo(() => getTodayYmd(), []);
 
-  const todayUtcYmd = useMemo(() => {
-    return new Date().toISOString().split("T")[0];
-  }, []);
+  const todayUtcYmd = useMemo(() => getTodayUtcYmd(), []);
 
   const expectedDayNumberFromTrip = useMemo(() => {
     if (!activeTrip?.startDate) return undefined;
@@ -149,7 +145,9 @@ const CameraScreen = () => {
     const maxDayNumber = hasDayNumbers ? Math.max(...dayNumbers) : 1;
     const isZeroBased = minDayNumber === 0;
 
-    const byKstDate = tripDays.find((day: any) => day.date === todayKstYmd);
+    const byLocalDate = tripDays.find(
+      (day: any) => day.date === todayLocalYmd
+    );
     const byUtcDate = tripDays.find((day: any) => day.date === todayUtcYmd);
 
     const expectedRaw = expectedDayNumberFromTrip;
@@ -172,7 +170,7 @@ const CameraScreen = () => {
     const byLatestDayNumber = sortedByDayNumber[sortedByDayNumber.length - 1];
 
     const todayData =
-      byKstDate ?? byUtcDate ?? byExpectedDayNumber ?? byLatestDayNumber;
+      byLocalDate ?? byUtcDate ?? byExpectedDayNumber ?? byLatestDayNumber;
     const todayRawNumber = Number(todayData?.dayNumber);
     const todayNumber = Number.isFinite(todayRawNumber)
       ? todayRawNumber
@@ -189,7 +187,7 @@ const CameraScreen = () => {
         ? maxDayNumber + 1
         : Math.max(1, maxDayNumber),
     };
-  }, [tripDays, todayKstYmd, todayUtcYmd, expectedDayNumberFromTrip]);
+  }, [tripDays, todayLocalYmd, todayUtcYmd, expectedDayNumberFromTrip]);
 
   // [수정] 오늘 찍은 사진 개수 계산 로직
   const currentPicIndex = useMemo(() => {
@@ -460,6 +458,8 @@ const CameraScreen = () => {
             />
             {/* ShotIndicator에도 현재 번호 연동 가능 */}
             <ShotIndicator current={currentPicIndex} />
+            {/* 필름 날짜 각인 스타일 실시간 시계 (로컬 + UTC) */}
+            <CameraClock />
           </>
         )}
       </View>
