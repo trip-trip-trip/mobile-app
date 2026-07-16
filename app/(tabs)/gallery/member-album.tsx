@@ -14,7 +14,6 @@ import {
   formatDateRangeToEnglish,
   getNextDay,
   getTodayYmd,
-  isCompletedTrip,
 } from "@/utils/date";
 import { formatCoordLabelDms } from "@/utils/location";
 import { BlurView } from "expo-blur";
@@ -67,9 +66,9 @@ export default function MemberAlbum() {
   const album = albumQuery.data?.result;
   const mediaData = album?.days ?? [];
 
-  const isCompleted = isCompletedTrip(album?.endDate ?? "", getTodayYmd());
   const currentDay = mediaData[activeIndex];
-  const isTodayCurrentDay = !isCompleted && currentDay?.date === getTodayYmd();
+  // 오늘 촬영분은 여행 종료 여부와 무관하게 다음날 0시에 공개 (마지막 날 포함)
+  const isTodayCurrentDay = currentDay?.date === getTodayYmd();
 
   const totalShots = mediaData.reduce((acc, d) => acc + d.photos.length, 0);
   const totalVideos = mediaData.reduce((acc, d) => acc + d.videos.length, 0);
@@ -90,7 +89,7 @@ export default function MemberAlbum() {
   const renderDayPage = ({ item, index }: { item: TripDay; index: number }) => {
     const dayNum = index + 1;
     const fourPhotos = item.photos.slice(0, 4);
-    const isBlur = !isCompleted && item.date === getTodayYmd();
+    const isBlur = item.date === getTodayYmd();
     const nextDay = getNextDay(item.date);
 
     const alertNotDeveloped = () =>

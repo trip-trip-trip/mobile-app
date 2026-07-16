@@ -37,9 +37,10 @@ import PhotoDetailModal from "@/components/gallery/PhotoDetailModal";
 import { VideoThumbItem } from "@/components/gallery/VideoThumbItem";
 import { useTripAlbumQuery } from "@/hooks/queries/gallery/useTripDetail";
 import type { DayMedia, DetailMediaItem, TripDay } from "@/types/gallery";
-import { getNextDay, getTodayYmd, isCompletedTrip } from "@/utils/date";
+import { getNextDay, getTodayYmd } from "@/utils/date";
 import { formatCoordLabelDms } from "@/utils/location";
 import { BlurView } from "expo-blur";
+import { isAxiosError } from "axios";
 import { endTrip } from "@/api/trip";
 import { postCreateReel } from "@/api/album";
 import queryClient from "@/api/queryClient";
@@ -101,8 +102,9 @@ export default function Album() {
   );
 
   const endDate = albumTitleData.endDate;
-  // 릴 표시 조건: 날짜 기준 유지 (endDate <= today 이면 릴 조회 가능)
-  const isCompleted = isCompletedTrip(endDate, getTodayYmd());
+  // 현상 완주 여부: 종료일 "다음날 0시"부터 true.
+  // 마지막 날 촬영분이 포함된 릴스 합본은 이때부터 공개 (종료 당일에는 미공개)
+  const isFullyDeveloped = !!endDate && endDate < getTodayYmd();
   // 종료 버튼 표시: status param이 ACTIVE일 때만 (param 없으면 종료 버튼 숨김)
   const tripStatus = params.status;
   const canEndTrip = tripStatus === "ACTIVE";
@@ -121,7 +123,8 @@ export default function Album() {
   });
 
   const currentDay = mediaData[activeIndex];
-  const isTodayCurrentDay = !isCompleted && currentDay?.date === getTodayYmd();
+  // 오늘 촬영분은 여행 종료 여부와 무관하게 다음날 0시에 공개 (마지막 날 포함)
+  const isTodayCurrentDay = currentDay?.date === getTodayYmd();
   // console.log("VIDEO", currentDay?.videos);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -149,7 +152,10 @@ export default function Album() {
       Alert.alert("완료", "여행 이름이 수정됐습니다.");
     } catch (error) {
       console.error("[Trip update error]", error);
-      Alert.alert("오류", "수정에 실패했습니다. 다시 시도해주세요.");
+      const serverMessage = isAxiosError(error)
+        ? error.response?.data?.message
+        : null;
+      Alert.alert("오류", serverMessage || "수정에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -170,7 +176,13 @@ export default function Album() {
               await deleteTrip.mutateAsync(tripId);
             } catch (error) {
               console.error("[Trip delete error]", error);
-              Alert.alert("오류", "삭제에 실패했습니다. 다시 시도해주세요.");
+              const serverMessage = isAxiosError(error)
+                ? error.response?.data?.message
+                : null;
+              Alert.alert(
+                "오류",
+                serverMessage || "삭제에 실패했습니다. 다시 시도해주세요.",
+              );
             }
           },
         },
@@ -213,9 +225,12 @@ export default function Album() {
             } catch (error) {
               console.error("[End trip error]", error);
               setIsEndingTrip(false);
+              const serverMessage = isAxiosError(error)
+                ? error.response?.data?.message
+                : null;
               Alert.alert(
                 "오류",
-                "여행 종료에 실패했습니다. 다시 시도해주세요.",
+                serverMessage || "여행 종료에 실패했습니다. 다시 시도해주세요.",
               );
             }
           },
@@ -333,7 +348,8 @@ export default function Album() {
     // 일자 - day 1, 2, ..
     const dayNum = index + 1;
     const fourPhotos = item.photos.slice(0, 4); // 네컷 캡처
-    const isBlur = !isCompleted && item.date === getTodayYmd();
+    // 오늘 촬영분은 여행 종료 여부와 무관하게 잠금 — 다음날 0시에 자동 공개
+    const isBlur = item.date === getTodayYmd();
     const nextDay = getNextDay(item.date);
 
     const blockIfToday = () => {
@@ -563,8 +579,8 @@ export default function Album() {
         </View>
 
         <View style={styles.videoGrid}>
-          {/* 3초 영상 합본 - 완료된 여행일 때만 조회 */}
-          {isCompleted && reelStatus === "done" && (
+          {/* 3초 영상 합본 - 마지막 날 촬영분이 포함되므로 종료일 다음날부터 공개 */}
+          {isFullyDeveloped && reelStatus === "done" && (
             <View style={styles.reelItem}>
               <Pressable
                 onPress={() => {
