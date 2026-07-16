@@ -1,6 +1,7 @@
 import { colors } from "@/constants/colors";
 import { TripInfo } from "@/types/gallery";
 import { formatDateRangeToEnglish } from "@/utils/date";
+import { Feather } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SharedProfiles } from "./SharedProfiles";
 
@@ -31,10 +32,23 @@ export const AlbumCard = ({ data }: AlbumCardProps) => {
 
       <View style={{ flexDirection: "row" }}>
         <View style={styles.cardRight}>
-          <Image
-            source={{ uri: coverUri }}
-            style={{ width: 152, height: 152 }}
-          />
+          {coverUri ? (
+            <Image
+              source={{ uri: coverUri }}
+              style={{ width: 152, height: 152 }}
+            />
+          ) : (
+            <View style={styles.coverPlaceholder}>
+              <Feather
+                name={data.videoCount > 0 ? "film" : "camera"}
+                size={36}
+                color={colors.NAVY}
+              />
+              <Text style={styles.coverPlaceholderText}>
+                {data.videoCount > 0 ? "VIDEO ONLY" : "NO SHOTS"}
+              </Text>
+            </View>
+          )}
         </View>
         <View style={styles.cardLeft}>
           <View
@@ -60,7 +74,7 @@ export const AlbumCard = ({ data }: AlbumCardProps) => {
                 paddingVertical: 6,
                 gap: 5,
                 justifyContent: "center",
-                alignItems: "start",
+                alignItems: "flex-start",
               }}
             >
               <Text style={styles.contentTitle}>LOCATION</Text>
@@ -118,6 +132,21 @@ const styles = StyleSheet.create({
   cardLeft: {
     backgroundColor: colors.CLOUD,
     width: "57%",
+  },
+  coverPlaceholder: {
+    width: 152,
+    height: 152,
+    backgroundColor: colors.CREAM,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  coverPlaceholderText: {
+    fontSize: 10,
+    color: colors.NAVY,
+    fontFamily: "Monoplex KR",
+    fontWeight: 700,
+    letterSpacing: 1,
   },
   contentTitle: {
     fontSize: 10,

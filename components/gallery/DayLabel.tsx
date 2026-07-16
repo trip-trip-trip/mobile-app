@@ -9,6 +9,7 @@ type DayLabelProps = {
   date?: string;
   onDownload?: () => void;
   onShare?: () => void;
+  showActions?: boolean; // 다운로드/공유 아이콘 표시 여부 (친구 앨범 등 읽기 전용 화면에서 false)
 };
 
 export const DayLabel = ({
@@ -16,6 +17,7 @@ export const DayLabel = ({
   date,
   onDownload,
   onShare,
+  showActions = true,
 }: DayLabelProps) => {
   return (
     <View style={styles.dayHeader}>
@@ -23,10 +25,12 @@ export const DayLabel = ({
         <Text style={styles.dayBadgeText}>DAY {dayNum}</Text>
       </View>
       <Text style={styles.dayDateText}>{date}</Text>
-      <View style={styles.iconGroup}>
-        <DownloadIcon width={19} onPress={onDownload} />
-        <ShareIcon width={20} onPress={onShare} />
-      </View>
+      {showActions && (
+        <View style={styles.iconGroup}>
+          <DownloadIcon width={19} onPress={onDownload} />
+          <ShareIcon width={20} onPress={onShare} />
+        </View>
+      )}
     </View>
   );
 };

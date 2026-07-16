@@ -107,6 +107,10 @@ export default function Album() {
   const tripStatus = params.status;
   const canEndTrip = tripStatus === "ACTIVE";
 
+  // 함께하는 여행 여부: 종료/삭제가 모든 멤버에게 일괄 적용됨을 안내하기 위함
+  const memberCount = album?.memberProfileUrls?.length ?? 0;
+  const isSharedTrip = memberCount >= 2;
+
   const {
     status: reelStatus,
     outputUrl,
@@ -153,11 +157,13 @@ export default function Album() {
   const handleDeleteTrip = () => {
     Alert.alert(
       "여행 삭제",
-      "이 여행을 삭제하면 모든 사진과 영상이 함께 삭제됩니다.\n계속하시겠습니까?",
+      isSharedTrip
+        ? `나를 포함해 ${memberCount}명이 함께하는 여행입니다.\n삭제하면 모든 멤버의 보관함에서 이 여행과 사진·영상이 사라지며, 되돌릴 수 없습니다.`
+        : "이 여행을 삭제하면 모든 사진과 영상이 함께 삭제됩니다.\n계속하시겠습니까?",
       [
         { text: "취소", style: "cancel" },
         {
-          text: "삭제",
+          text: isSharedTrip ? "모두에게서 삭제" : "삭제",
           style: "destructive",
           onPress: async () => {
             try {
@@ -176,11 +182,13 @@ export default function Album() {
   const handleEndTrip = () => {
     Alert.alert(
       "여행 종료",
-      "지금 여행을 종료하면 사진 현상이 시작됩니다.\n계속하시겠습니까?",
+      isSharedTrip
+        ? `나를 포함해 ${memberCount}명이 함께하는 여행입니다.\n지금 종료하면 모든 멤버의 여행이 한 번에 종료되고 사진 현상이 시작됩니다.`
+        : "지금 여행을 종료하면 사진 현상이 시작됩니다.\n계속하시겠습니까?",
       [
         { text: "취소", style: "cancel" },
         {
-          text: "종료",
+          text: isSharedTrip ? "모두 종료" : "종료",
           onPress: async () => {
             setIsEndingTrip(true);
             try {
@@ -481,7 +489,16 @@ export default function Album() {
         leftIcon={<GoBackIcon />}
       />
       <ScrollView style={styles.safeArea}>
-        <AlbumTitle data={albumTitleData} isTraveling={canEndTrip} />
+        <AlbumTitle
+          data={albumTitleData}
+          isTraveling={canEndTrip}
+          onPressMembers={() =>
+            router.push({
+              pathname: "/(tabs)/gallery/members" as any,
+              params: { tripId: String(tripId), title: album?.title ?? "" },
+            })
+          }
+        />
 
         {/* 여행 액션 버튼 행 (수정 / 삭제 / 종료) */}
         <View style={styles.actionRow}>

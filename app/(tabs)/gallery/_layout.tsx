@@ -17,6 +17,10 @@ export default function SettingScreen() {
       <Stack.Screen name="[tripId]" />
       {/* /gallery/developing */}
       <Stack.Screen name="developing" />
+      {/* /gallery/members — 여행 참여자 목록 */}
+      <Stack.Screen name="members" />
+      {/* /gallery/member-album — 친구 앨범 */}
+      <Stack.Screen name="member-album" />
     </Stack>
   );
 }
