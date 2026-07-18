@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { getReel } from "@/api/album";
-import { getTodayYmd, isCompletedTrip } from "@/utils/date";
+import type { TripStatus } from "@/types/gallery";
 
 type ClientReelStatus =
   | "collecting"
@@ -14,7 +14,7 @@ type ClientReelStatus =
 
 type Params = {
   tripId: number;
-  endDate: string;
+  tripStatus?: TripStatus;
   enabled?: boolean;
 };
 
@@ -24,14 +24,11 @@ type Params = {
  */
 export const useReels = ({
   tripId,
-  endDate,
+  tripStatus,
   enabled = true,
 }: Params) => {
-  // endDate가 비어있으면 아직 앨범 데이터 미로딩 → ready=false
-  const ready = useMemo(
-    () => !!endDate && endDate.length >= 10 && isCompletedTrip(endDate, getTodayYmd()),
-    [endDate],
-  );
+  // 릴은 여행 종료(ENDED) 후에만 조회 — 날짜 비교 금지, 판정은 서버 status만
+  const ready = useMemo(() => tripStatus === "ENDED", [tripStatus]);
 
   const canRun = enabled && ready && tripId > 0;
 

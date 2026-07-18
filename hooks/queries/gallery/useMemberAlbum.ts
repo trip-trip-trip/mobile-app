@@ -20,7 +20,7 @@ export const useMemberAlbumQuery = (tripId: number, memberId: number) => {
       ...data,
       result: {
         ...data.result,
-        days: [...data.result.days].sort((a, b) => a.dayNumber - b.dayNumber),
+        rolls: [...(data.result.rolls ?? [])].sort((a, b) => a.index - b.index),
       },
     }),
   });

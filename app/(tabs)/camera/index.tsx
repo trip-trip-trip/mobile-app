@@ -45,7 +45,7 @@ import { uploadMedia } from "@/api/media";
 import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
 import { useGalleryTripsQuery } from "@/hooks/queries/gallery/useAllTrips";
 import { useDailyShotLimit } from "@/hooks/queries/useDailyShotLimit";
-import { getTodayUtcYmd, getTodayYmd } from "@/utils/date";
+import { isAxiosError } from "axios";
 import { useQuery } from "@tanstack/react-query";
 
 const CameraScreen = () => {
@@ -85,160 +85,27 @@ const CameraScreen = () => {
     queryFn: getActiveTripData,
   });
 
-  // 2. 헤더 및 프로그레스 바에 넘길 데이터 계산
-  const activeTrip = useMemo(() => {
-    return (
-      tripStatus?.trip?.find((t: any) => t.status === "ACTIVE") ||
-      tripStatus?.trip?.[0]
-    );
-  }, [tripStatus]);
-
   const { data: tripDetail, refetch: refetchTripDetail } = useQuery({
     queryKey: albumKeys.detail(targetTripId as number),
     queryFn: () => getTripAlbumDetail(targetTripId as number),
     enabled: Number.isFinite(targetTripId) && Number(targetTripId) > 0,
   });
 
-  const tripDays = useMemo(
-    () => tripDetail?.result.days ?? [],
-    [tripDetail?.result.days]
-  );
+  // 롤 시스템: Day N/M과 촬영 컷 번호는 전부 서버 판정값 사용 — 날짜 계산 금지
+  const currentDay = tripDetail?.result.currentRoll ?? 1;
+  const totalDays = tripDetail?.result.totalDays ?? 1;
 
-  // 디바이스 로컬 기준 오늘 날짜 (KST +9 하드코딩 제거 — 어느 타임존에서든 사용자 감각과 일치)
-  const todayLocalYmd = useMemo(() => getTodayYmd(), []);
-
-  const todayUtcYmd = useMemo(() => getTodayUtcYmd(), []);
-
-  const expectedDayNumberFromTrip = useMemo(() => {
-    if (!activeTrip?.startDate) return undefined;
-
-    const start = new Date(activeTrip.startDate);
-    const now = new Date();
-    const startDay = new Date(
-      start.getFullYear(),
-      start.getMonth(),
-      start.getDate()
-    );
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffToNow = Math.floor(
-      (today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    return Math.max(0, diffToNow);
-  }, [activeTrip?.startDate]);
-
-  const dayMeta = useMemo(() => {
-    if (!Array.isArray(tripDays) || tripDays.length === 0) {
-      return {
-        todayData: undefined,
-        currentDayFromDays: 1,
-        totalDaysFromDays: 1,
-      };
-    }
-
-    const dayNumbers = tripDays
-      .map((day: any) => Number(day.dayNumber))
-      .filter((value: number) => Number.isFinite(value));
-
-    const hasDayNumbers = dayNumbers.length > 0;
-    const minDayNumber = hasDayNumbers ? Math.min(...dayNumbers) : 1;
-    const maxDayNumber = hasDayNumbers ? Math.max(...dayNumbers) : 1;
-    const isZeroBased = minDayNumber === 0;
-
-    const byLocalDate = tripDays.find(
-      (day: any) => day.date === todayLocalYmd
-    );
-    const byUtcDate = tripDays.find((day: any) => day.date === todayUtcYmd);
-
-    const expectedRaw = expectedDayNumberFromTrip;
-    const expectedDayNumber =
-      expectedRaw == null
-        ? undefined
-        : isZeroBased
-          ? expectedRaw
-          : expectedRaw + 1;
-    const byExpectedDayNumber =
-      expectedDayNumber == null
-        ? undefined
-        : tripDays.find(
-            (day: any) => Number(day.dayNumber) === expectedDayNumber
-          );
-
-    const sortedByDayNumber = [...tripDays].sort(
-      (a: any, b: any) => Number(a.dayNumber) - Number(b.dayNumber)
-    );
-    const byLatestDayNumber = sortedByDayNumber[sortedByDayNumber.length - 1];
-
-    const todayData =
-      byLocalDate ?? byUtcDate ?? byExpectedDayNumber ?? byLatestDayNumber;
-    const todayRawNumber = Number(todayData?.dayNumber);
-    const todayNumber = Number.isFinite(todayRawNumber)
-      ? todayRawNumber
-      : isZeroBased
-        ? minDayNumber
-        : 1;
-
-    return {
-      todayData,
-      currentDayFromDays: isZeroBased
-        ? todayNumber + 1
-        : Math.max(1, todayNumber),
-      totalDaysFromDays: isZeroBased
-        ? maxDayNumber + 1
-        : Math.max(1, maxDayNumber),
-    };
-  }, [tripDays, todayLocalYmd, todayUtcYmd, expectedDayNumberFromTrip]);
-
-  // [수정] 오늘 찍은 사진 개수 계산 로직
+  // 현재 롤에 저장된 사진 수 → 다음 촬영이 몇 번째 컷인지
   const currentPicIndex = useMemo(() => {
-    const savedCount = dayMeta.todayData?.photos?.length ?? 0;
-    const nextIndex = savedCount + 1;
-
-    return nextIndex > 4 ? 4 : nextIndex;
-  }, [dayMeta.todayData]);
+    const result = tripDetail?.result;
+    const roll = result?.rolls?.find((r) => r.index === result?.currentRoll);
+    const savedCount = roll?.photos?.length ?? 0;
+    return Math.min(savedCount + 1, 4);
+  }, [tripDetail?.result]);
 
   const { isLimitReached, todayPhotoCount } = useDailyShotLimit(
     Number(targetTripId)
   );
-
-  // [수정] Day 계산 로직
-  const { currentDay, totalDays } = useMemo(() => {
-    if (tripDetail?.result.startDate && tripDetail?.result.endDate) {
-      const start = new Date(tripDetail.result.startDate);
-      const end = new Date(tripDetail.result.endDate);
-      const now = new Date();
-
-      const startDay = new Date(
-        start.getFullYear(),
-        start.getMonth(),
-        start.getDate()
-      );
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-
-      const diffToNow = Math.floor(
-        (today.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      const diffTotal = Math.floor(
-        (endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      return {
-        currentDay: Math.max(1, diffToNow + 1),
-        totalDays: Math.max(1, diffTotal + 1),
-      };
-    }
-
-    return {
-      currentDay: dayMeta.currentDayFromDays,
-      totalDays: dayMeta.totalDaysFromDays,
-    };
-  }, [
-    tripDetail?.result.startDate,
-    tripDetail?.result.endDate,
-    dayMeta.currentDayFromDays,
-    dayMeta.totalDaysFromDays,
-  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -392,7 +259,11 @@ const CameraScreen = () => {
       ]);
     } catch (error) {
       console.error("Upload error:", error);
-      Alert.alert("실패", "서버 업로드 중 문제가 발생했습니다.");
+      // 서버가 쿼터 초과("오늘의 필름을 다 썼습니다")·여행 종료 등을 판정하므로 메시지를 그대로 표시
+      const serverMessage = isAxiosError(error)
+        ? error.response?.data?.message
+        : null;
+      Alert.alert("실패", serverMessage || "서버 업로드 중 문제가 발생했습니다.");
     } finally {
       setIsUploading(false);
     }
@@ -435,12 +306,13 @@ const CameraScreen = () => {
             )}
 
             {/* 장식용 프레임 — 아래 깔린 '다시 찍기' 버튼이 눌리도록 터치 통과 */}
-            <Image
-              source={require("@/assets/camera/photoframe.png")}
-              style={styles.photoFrame}
-              resizeMode="cover"
-              pointerEvents="none"
-            />
+            <View style={styles.photoFrame} pointerEvents="none">
+              <Image
+                source={require("@/assets/camera/photoframe.png")}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            </View>
             <View style={styles.resultTextWrapper}>
               <Text style={styles.resultTitle}>촬영 완료!</Text>
               <Text style={styles.resultSub}>

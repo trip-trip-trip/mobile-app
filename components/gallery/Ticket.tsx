@@ -11,17 +11,8 @@ type TicketProps = {
 };
 
 export const Ticket = ({ data }: TicketProps) => {
-  // 날짜수 계산
-  const diffDaysInclusive = (startYmd: string, endYmd: string) => {
-    const toUtcMs = (ymd: string) => {
-      const [y, m, d] = ymd.split("-").map(Number);
-      return Date.UTC(y, m - 1, d);
-    };
-
-    const ms = toUtcMs(endYmd) - toUtcMs(startYmd);
-    const days = Math.floor(ms / (24 * 60 * 60 * 1000));
-    return days + 1;
-  };
+  // 총 일수는 서버의 totalDays 사용 — 날짜 diff 계산 금지
+  const totalDays = data.totalDays ?? 1;
 
   return (
     <View style={styles.ticket}>
@@ -64,7 +55,7 @@ export const Ticket = ({ data }: TicketProps) => {
             {data.photoCount}
             <Text style={{ fontSize: 13 }}>
               {" "}
-              / {4 * diffDaysInclusive(data.startDate, data.endDate)}
+              / {4 * totalDays}
             </Text>
           </TicketLabel>
 

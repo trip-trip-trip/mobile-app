@@ -1,23 +1,23 @@
 import axiosInstance from "@/api/axios";
-import type { TripDay, TripDetailResponse, TripMember } from "@/types/gallery";
-import { getDeviceTimeZone } from "@/utils/date";
+import type { TripDetailResponse, TripMember } from "@/types/gallery";
 
-// GET : 여행 상세정보 조회(미디어)
-// tz(디바이스 타임존)를 넘겨 서버가 사용자 로컬 날짜 기준으로 day를 그룹핑하게 함
+// GET : 여행 롤별 미디어 조회 (tz는 axios 인터셉터의 X-Timezone 헤더로 전송됨)
 export const getTripAlbumDetail = async (
   tripId: number
 ): Promise<TripDetailResponse> => {
   const { data } = await axiosInstance.get<TripDetailResponse>(
-    `/trips/${tripId}`,
-    { params: { tz: getDeviceTimeZone() } }
+    `/trips/${tripId}`
   );
-  if (__DEV__) console.log("앨범 상세:", data.result.days[0]);
+  if (__DEV__) console.log("앨범 상세:", data.result.rolls?.[0]);
   return data;
 };
 
-export const getTripAlbumDays = async (tripId: number): Promise<TripDay[]> => {
-  const result = await getTripAlbumDetail(tripId);
-  return result.result.days;
+// POST : 롤 현상 — 봉인된 롤의 내 사진들을 공개 처리
+export const developRoll = async (
+  tripId: number,
+  rollIndex: number
+): Promise<void> => {
+  await axiosInstance.post(`/trips/${tripId}/rolls/${rollIndex}/develop`);
 };
 
 // GET : 여행 참여자 목록 조회
@@ -28,14 +28,13 @@ export const getTripMembers = async (
   return data.result as TripMember[];
 };
 
-// GET : 같은 여행 참여자(친구)의 앨범 조회 — 서버에서 참여자 여부 검증
+// GET : 같은 여행 참여자(친구)의 앨범 조회 — 서버가 참여자 검증, 현상된 미디어만 반환
 export const getMemberTripAlbumDetail = async (
   tripId: number,
   memberId: number
 ): Promise<TripDetailResponse> => {
   const { data } = await axiosInstance.get<TripDetailResponse>(
-    `/trips/${tripId}/members/${memberId}/media`,
-    { params: { tz: getDeviceTimeZone() } }
+    `/trips/${tripId}/members/${memberId}/media`
   );
   return data;
 };

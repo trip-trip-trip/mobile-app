@@ -11,7 +11,7 @@ import { useDeleteTrip, useUpdateTrip } from "@/hooks/queries/useTripMutation";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 // 사진 공유
 import * as Sharing from "expo-sharing";
 
@@ -35,10 +35,11 @@ import ViewShot from "react-native-view-shot";
 
 import PhotoDetailModal from "@/components/gallery/PhotoDetailModal";
 import { VideoThumbItem } from "@/components/gallery/VideoThumbItem";
+import { useDevelopRoll } from "@/hooks/queries/gallery/useDevelopRoll";
 import { useTripAlbumQuery } from "@/hooks/queries/gallery/useTripDetail";
-import type { DayMedia, DetailMediaItem, TripDay } from "@/types/gallery";
-import { getNextDay, getTodayYmd } from "@/utils/date";
+import type { DetailMediaItem, RollMedia, TripRoll } from "@/types/gallery";
 import { formatCoordLabelDms } from "@/utils/location";
+import { getRollVisibility, rollDateLabel } from "@/utils/roll";
 import { BlurView } from "expo-blur";
 import { isAxiosError } from "axios";
 import { endTrip } from "@/api/trip";
@@ -51,7 +52,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function Album() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [selected, setSelected] = useState<DayMedia | null>(null);
+  const [selected, setSelected] = useState<RollMedia | null>(null);
   const [selectedMeta, setSelectedMeta] = useState<{
     date: string;
     dayLabel: string;
@@ -84,7 +85,7 @@ export default function Album() {
   const deleteTrip = useDeleteTrip();
 
   const album = albumQuery.data?.result;
-  const mediaData = album?.days ?? [];
+  const mediaData = album?.rolls ?? [];
 
   const albumTitleData = useMemo(
     () => ({
@@ -95,19 +96,14 @@ export default function Album() {
       memberProfileUrls: album?.memberProfileUrls ?? [""],
       startDate: album?.startDate ?? "",
       endDate: album?.endDate ?? "",
-      shots: mediaData.reduce((acc, d) => acc + d.photos.length, 0),
-      video: mediaData.reduce((acc, d) => acc + d.videos.length, 0),
+      shots: mediaData.reduce((acc, r) => acc + r.photos.length, 0),
+      video: mediaData.reduce((acc, r) => acc + r.videos.length, 0),
     }),
     [tripId, album?.title, album?.startDate, album?.endDate, mediaData],
   );
 
-  const endDate = albumTitleData.endDate;
-  // 현상 완주 여부: 종료일 "다음날 0시"부터 true.
-  // 마지막 날 촬영분이 포함된 릴스 합본은 이때부터 공개 (종료 당일에는 미공개)
-  const isFullyDeveloped = !!endDate && endDate < getTodayYmd();
-  // 종료 버튼 표시: status param이 ACTIVE일 때만 (param 없으면 종료 버튼 숨김)
-  const tripStatus = params.status;
-  const canEndTrip = tripStatus === "ACTIVE";
+  // 판정은 전부 서버 status/롤 플래그 사용 — 날짜 비교 금지 (travel-day-roll-spec.md)
+  const canEndTrip = album?.status === "ACTIVE";
 
   // 함께하는 여행 여부: 종료/삭제가 모든 멤버에게 일괄 적용됨을 안내하기 위함
   const memberCount = album?.memberProfileUrls?.length ?? 0;
@@ -118,14 +114,34 @@ export default function Album() {
     outputUrl,
   } = useReels({
     tripId,
-    endDate,
-    enabled: !!album, // 앨범 데이터 로딩 완료 후에만 릴 상태 조회
+    tripStatus: album?.status, // 릴은 여행 종료(ENDED) 후에만 조회
+    enabled: !!album,
   });
 
-  const currentDay = mediaData[activeIndex];
-  // 오늘 촬영분은 여행 종료 여부와 무관하게 다음날 0시에 공개 (마지막 날 포함)
-  const isTodayCurrentDay = currentDay?.date === getTodayYmd();
-  // console.log("VIDEO", currentDay?.videos);
+  const developMutation = useDevelopRoll(tripId);
+  const currentRollData = mediaData[activeIndex];
+  const currentRollVisibility = currentRollData
+    ? getRollVisibility(currentRollData)
+    : "locked";
+
+  // 롤 인덱스가 데이터 갱신으로 줄어들면 범위 내로 보정 (자정 경과·현상 후 페이지 수 변화 대응)
+  useEffect(() => {
+    if (mediaData.length > 0 && activeIndex >= mediaData.length) {
+      setActiveIndex(mediaData.length - 1);
+    }
+  }, [mediaData.length, activeIndex]);
+
+  const handleDevelop = (rollIndex: number) => {
+    if (developMutation.isPending) return;
+    developMutation.mutate(rollIndex, {
+      onError: (error) => {
+        const serverMessage = isAxiosError(error)
+          ? error.response?.data?.message
+          : null;
+        Alert.alert("오류", serverMessage || "현상에 실패했습니다. 다시 시도해주세요.");
+      },
+    });
+  };
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -344,46 +360,41 @@ export default function Album() {
     }
   };
 
-  const renderDayPage = ({ item, index }: { item: TripDay; index: number }) => {
-    // 일자 - day 1, 2, ..
-    const dayNum = index + 1;
+  const renderRollPage = ({ item, index }: { item: TripRoll; index: number }) => {
+    const rollNum = item.index;
     const fourPhotos = item.photos.slice(0, 4); // 네컷 캡처
-    // 오늘 촬영분은 여행 종료 여부와 무관하게 잠금 — 다음날 0시에 자동 공개
-    const isBlur = item.date === getTodayYmd();
-    const nextDay = getNextDay(item.date);
+    // 잠금/현상 판정은 전부 서버 플래그 — 클라이언트 날짜 비교 금지
+    const visibility = getRollVisibility(item);
+    const isLocked = visibility !== "visible";
+    const dateLabel = rollDateLabel(item);
 
-    const blockIfToday = () => {
-      if (isBlur) {
-        Alert.alert("잠금 상태", "오늘 촬영한 사진은 아직 볼 수 없어요.");
-        return true;
+    const alertLocked = () => {
+      if (visibility === "developable") {
+        Alert.alert("현상 대기", "현상하기 버튼을 눌러 사진을 확인해보세요.");
+      } else if (item.sealed) {
+        Alert.alert("현상 대기", "다음 날 0시부터 현상할 수 있어요.");
+      } else {
+        Alert.alert("잠금 상태", "오늘의 필름은 하루가 지나면 현상할 수 있어요.");
       }
-      return false;
     };
 
     return (
-      <View style={isBlur ? styles.blur : styles.dayPage}>
+      <View style={isLocked ? styles.blur : styles.dayPage}>
         <DayLabel
-          dayNum={dayNum}
-          date={item.date}
+          dayNum={rollNum}
+          date={dateLabel}
           onDownload={() => {
-            if (isBlur) {
-              Alert.alert(
-                "현상 미완료",
-                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
-              );
+            if (isLocked) {
+              alertLocked();
               return;
             }
             downloadFourCut();
           }}
           onShare={() => {
-            if (isBlur) {
-              Alert.alert(
-                "현상 미완료",
-                `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
-              );
+            if (isLocked) {
+              alertLocked();
               return;
             }
-
             shareFourCut();
           }}
         />
@@ -394,24 +405,25 @@ export default function Album() {
               shotRefs.current[index] = r;
             }}
             options={{ format: "png", quality: 1 }}
-            style={styles.photoGrid}
+            style={[
+              styles.photoGrid,
+              fourPhotos.length === 0 && styles.photoGridEmpty,
+            ]}
           >
             {fourPhotos.map((photo, idx) => {
-              // const dayLabel = `D${dayNum}-#${String(idx + 1).padStart(
-              //   2,
-              //   "0"
-              // )}`;
-
               return (
                 <View key={photo.id} style={styles.photoItem}>
                   <Pressable
                     onPress={() => {
-                      if (blockIfToday()) return;
+                      if (isLocked) {
+                        alertLocked();
+                        return;
+                      }
 
-                      // 그날 사진 전체
-                      const dayItems: DetailMediaItem[] = item.photos.map(
+                      // 그 롤의 사진 전체
+                      const rollItems: DetailMediaItem[] = item.photos.map(
                         (p, i) => {
-                          const dayLabel = `D${dayNum}-#${String(
+                          const dayLabel = `D${rollNum}-#${String(
                             i + 1,
                           ).padStart(2, "0")}`;
                           return {
@@ -419,7 +431,7 @@ export default function Album() {
                             mediaKind: "PHOTO",
                             url: p.url,
                             comment: p.comment,
-                            date: item.date,
+                            date: dateLabel,
                             dayLabel,
                             lat: p.lat,
                             lng: p.lng,
@@ -427,19 +439,19 @@ export default function Album() {
                         },
                       );
 
-                      setDetailItems(dayItems);
+                      setDetailItems(rollItems);
                       setDetailInitialIndex(idx); // 지금 누른 사진의 idx
 
                       setSelected(item.photos[idx]);
                       setSelectedMeta({
-                        date: item.date,
-                        dayLabel: dayItems[idx].dayLabel,
+                        date: dateLabel,
+                        dayLabel: rollItems[idx].dayLabel,
                       });
                     }}
                   >
                     <PhotoItem
-                      date={item.date}
-                      day={dayNum}
+                      date={dateLabel}
+                      day={rollNum}
                       num={idx + 1}
                       location={formatCoordLabelDms(photo.lat, photo.lng)}
                       image={photo.url}
@@ -450,16 +462,8 @@ export default function Album() {
             })}
           </ViewShot>
 
-          {isBlur && (
-            <Pressable
-              style={styles.lockOverlay}
-              onPress={() =>
-                Alert.alert(
-                  "현상 미완료",
-                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
-                )
-              }
-            >
+          {isLocked && (
+            <Pressable style={styles.lockOverlay} onPress={alertLocked}>
               <BlurView
                 intensity={40}
                 tint="light"
@@ -472,23 +476,24 @@ export default function Album() {
                 ]}
               />
               <LockIcon width={76} height={95} />
-              <Text
-                style={{
-                  fontFamily: "Orbit",
-                  color: colors.CREAM,
-                  backgroundColor: colors.INK,
-                  marginTop: 23,
-                  textAlign: "center",
-                  lineHeight: 16,
-                  paddingVertical: 3,
-                  paddingHorizontal: 7,
-                  fontSize: 14,
-                  fontWeight: 400,
-                }}
-              >
-                {nextDay.year}년 {nextDay.month}월 {nextDay.day}일에 현상이
-                완료돼요
-              </Text>
+              {visibility === "developable" ? (
+                // 기존 잠금 그래픽 자리에 현상 버튼 (Q2)
+                <Pressable
+                  style={styles.developButton}
+                  onPress={() => handleDevelop(rollNum)}
+                  disabled={developMutation.isPending}
+                >
+                  <Text style={styles.developButtonText}>
+                    {developMutation.isPending ? "현상 중..." : "현상하기"}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.lockText}>
+                  {item.sealed
+                    ? "봉인된 필름이에요. 다음 날 0시부터 현상할 수 있어요"
+                    : "하루가 지나면 현상할 수 있어요"}
+                </Text>
+              )}
             </Pressable>
           )}
         </View>
@@ -555,8 +560,8 @@ export default function Album() {
 
         <FlatList
           data={mediaData}
-          renderItem={renderDayPage}
-          keyExtractor={(item) => String(item.dayNumber)}
+          renderItem={renderRollPage}
+          keyExtractor={(item) => String(item.index)}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -579,8 +584,8 @@ export default function Album() {
         </View>
 
         <View style={styles.videoGrid}>
-          {/* 3초 영상 합본 - 마지막 날 촬영분이 포함되므로 종료일 다음날부터 공개 */}
-          {isFullyDeveloped && reelStatus === "done" && (
+          {/* 3초 영상 합본 - 여행 종료(ENDED) 후에만 공개 (Q4) */}
+          {album?.status === "ENDED" && reelStatus === "done" && (
             <View style={styles.reelItem}>
               <Pressable
                 onPress={() => {
@@ -591,13 +596,14 @@ export default function Album() {
 
                   // done
                   if (!outputUrl) return;
+                  const reelDate = album?.endDate ?? "";
                   const reelItem: DetailMediaItem[] = [
                     {
                       id: -1, // 임시 id
                       mediaKind: "VIDEO",
                       url: outputUrl,
                       comment: null,
-                      date: endDate,
+                      date: reelDate,
                       dayLabel: "REEL",
                       lat: null,
                       lng: null,
@@ -617,11 +623,14 @@ export default function Album() {
                     width: null,
                     height: null,
                     durationSec: null,
-                    takenAt: new Date().toISOString(),
+                    rollIndex: null,
+                    capturedAt: "",
+                    captureTz: null,
+                    developedAt: null,
                     lat: null,
                     lng: null,
                   } as any);
-                  setSelectedMeta({ date: endDate, dayLabel: "REEL" });
+                  setSelectedMeta({ date: reelDate, dayLabel: "REEL" });
                 }}
               >
                 <View style={styles.reelThumbWrap}>
@@ -639,27 +648,30 @@ export default function Album() {
             </View>
           )}
 
-          {/* 기존 day 영상들 (릴스 합본 영상은 제외) */}
-          {currentDay?.videos
+          {/* 현재 롤의 영상들 (릴스 합본 영상은 제외) — 잠금 판정은 롤 가시성 */}
+          {currentRollData?.videos
             .filter((v) => !outputUrl || v.url !== outputUrl)
             .map((video, idx) => {
-            const nextDay = getNextDay(currentDay.date);
+            const rollLocked = currentRollVisibility !== "visible";
+            const rollLabel = rollDateLabel(currentRollData);
             const onPress = () => {
-              if (isTodayCurrentDay) {
+              if (rollLocked) {
                 Alert.alert(
-                  "현상 미완료",
-                  `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
+                  "현상 대기",
+                  currentRollVisibility === "developable"
+                    ? "현상하기 버튼을 눌러 확인해보세요."
+                    : "하루가 지나면 현상할 수 있어요.",
                 );
                 return;
               }
-              const dayItems: DetailMediaItem[] = currentDay.videos.map(
+              const rollItems: DetailMediaItem[] = currentRollData.videos.map(
                 (v, i) => ({
                   id: v.id,
                   mediaKind: "VIDEO",
                   url: v.url,
                   comment: v.comment,
-                  date: currentDay.date,
-                  dayLabel: `D${currentDay.dayNumber}-V${String(i + 1).padStart(
+                  date: rollLabel,
+                  dayLabel: `D${currentRollData.index}-V${String(i + 1).padStart(
                     2,
                     "0",
                   )}`,
@@ -668,12 +680,12 @@ export default function Album() {
                 }),
               );
 
-              setDetailItems(dayItems);
+              setDetailItems(rollItems);
               setDetailInitialIndex(idx);
               setSelected(video);
               setSelectedMeta({
-                date: currentDay.date,
-                dayLabel: dayItems[idx].dayLabel,
+                date: rollLabel,
+                dayLabel: rollItems[idx].dayLabel,
               });
             };
 
@@ -682,7 +694,7 @@ export default function Album() {
                 <Pressable onPress={onPress}>
                   <View style={styles.thumbWrap}>
                     <VideoThumbItem videoUrl={video.url} />
-                    {isTodayCurrentDay && (
+                    {rollLocked && (
                       <View style={styles.blurOverlay}>
                         <BlurView
                           intensity={40}
@@ -801,8 +813,35 @@ const styles = StyleSheet.create({
     width: "50%",
     padding: 0,
   },
+  // 사진이 0장인 잠금 롤에서 그리드가 높이 0으로 붕괴하지 않도록 최소 높이 확보
+  photoGridEmpty: {
+    minHeight: SCREEN_WIDTH * 0.75,
+  },
   gridWrapper: {
     position: "relative",
+  },
+  developButton: {
+    marginTop: 23,
+    backgroundColor: colors.INK,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+  },
+  developButtonText: {
+    fontFamily: "Orbit",
+    color: colors.CREAM,
+    fontSize: 14,
+  },
+  lockText: {
+    fontFamily: "Orbit",
+    color: colors.CREAM,
+    backgroundColor: colors.INK,
+    marginTop: 23,
+    textAlign: "center",
+    lineHeight: 16,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    fontSize: 13,
   },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,

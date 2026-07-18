@@ -1,5 +1,4 @@
 import DefaultProfile from "@/assets/icons/default_profile.svg";
-import LockIcon from "@/assets/icons/lock.svg";
 import { DayLabel } from "@/components/gallery/DayLabel";
 import PhotoDetailModal from "@/components/gallery/PhotoDetailModal";
 import { PhotoItem } from "@/components/gallery/PhotoItem";
@@ -9,18 +8,13 @@ import Header from "@/components/Header";
 import GoBackIcon from "@/components/icons/GoBackIcon";
 import { colors } from "@/constants/colors";
 import { useMemberAlbumQuery } from "@/hooks/queries/gallery/useMemberAlbum";
-import type { DetailMediaItem, TripDay } from "@/types/gallery";
-import {
-  formatDateRangeToEnglish,
-  getNextDay,
-  getTodayYmd,
-} from "@/utils/date";
+import type { DetailMediaItem, TripRoll } from "@/types/gallery";
+import { formatDateRangeToEnglish } from "@/utils/date";
 import { formatCoordLabelDms } from "@/utils/location";
-import { BlurView } from "expo-blur";
+import { rollDateLabel } from "@/utils/roll";
 import { useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -64,14 +58,26 @@ export default function MemberAlbum() {
 
   const albumQuery = useMemberAlbumQuery(tripId, memberId);
   const album = albumQuery.data?.result;
-  const mediaData = album?.days ?? [];
 
-  const currentDay = mediaData[activeIndex];
-  // 오늘 촬영분은 여행 종료 여부와 무관하게 다음날 0시에 공개 (마지막 날 포함)
-  const isTodayCurrentDay = currentDay?.date === getTodayYmd();
+  // 서버가 친구의 "현상된" 미디어만 내려주므로(Q9) 잠금 UI 없이 콘텐츠 있는 롤만 표시
+  const mediaData = useMemo(
+    () =>
+      (album?.rolls ?? []).filter(
+        (r) => r.photos.length > 0 || r.videos.length > 0,
+      ),
+    [album?.rolls],
+  );
 
-  const totalShots = mediaData.reduce((acc, d) => acc + d.photos.length, 0);
-  const totalVideos = mediaData.reduce((acc, d) => acc + d.videos.length, 0);
+  const currentRoll = mediaData[activeIndex];
+
+  useEffect(() => {
+    if (mediaData.length > 0 && activeIndex >= mediaData.length) {
+      setActiveIndex(mediaData.length - 1);
+    }
+  }, [mediaData.length, activeIndex]);
+
+  const totalShots = mediaData.reduce((acc, r) => acc + r.photos.length, 0);
+  const totalVideos = mediaData.reduce((acc, r) => acc + r.videos.length, 0);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -85,83 +91,46 @@ export default function MemberAlbum() {
     setDetailVisible(true);
   };
 
-  // 내 앨범(renderDayPage)과 동일한 네컷 레이아웃 — 다운로드/공유 및 캡처만 제외
-  const renderDayPage = ({ item, index }: { item: TripDay; index: number }) => {
-    const dayNum = index + 1;
+  // 내 앨범과 동일한 네컷 레이아웃 — 현상된 롤만 오므로 잠금/현상 버튼 없음
+  const renderRollPage = ({ item }: { item: TripRoll; index: number }) => {
+    const rollNum = item.index;
     const fourPhotos = item.photos.slice(0, 4);
-    const isBlur = item.date === getTodayYmd();
-    const nextDay = getNextDay(item.date);
-
-    const alertNotDeveloped = () =>
-      Alert.alert(
-        "현상 미완료",
-        `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
-      );
+    const dateLabel = rollDateLabel(item);
 
     return (
-      <View style={isBlur ? styles.blur : styles.dayPage}>
-        <DayLabel dayNum={dayNum} date={item.date} showActions={false} />
+      <View style={styles.dayPage}>
+        <DayLabel dayNum={rollNum} date={dateLabel} showActions={false} />
 
-        <View style={styles.gridWrapper}>
-          <View style={styles.photoGrid}>
-            {fourPhotos.map((photo, idx) => (
-              <View key={photo.id} style={styles.photoItem}>
-                <Pressable
-                  onPress={() => {
-                    if (isBlur) {
-                      Alert.alert(
-                        "잠금 상태",
-                        "오늘 촬영한 사진은 아직 볼 수 없어요.",
-                      );
-                      return;
-                    }
-                    const dayItems: DetailMediaItem[] = item.photos.map(
-                      (p, i) => ({
-                        id: p.id,
-                        mediaKind: "PHOTO",
-                        url: p.url,
-                        comment: p.comment,
-                        date: item.date,
-                        dayLabel: `D${dayNum}-#${String(i + 1).padStart(2, "0")}`,
-                        lat: p.lat,
-                        lng: p.lng,
-                      }),
-                    );
-                    openDetail(dayItems, idx);
-                  }}
-                >
-                  <PhotoItem
-                    date={item.date}
-                    day={dayNum}
-                    num={idx + 1}
-                    location={formatCoordLabelDms(photo.lat, photo.lng)}
-                    image={photo.url}
-                  />
-                </Pressable>
-              </View>
-            ))}
-          </View>
-
-          {isBlur && (
-            <Pressable style={styles.lockOverlay} onPress={alertNotDeveloped}>
-              <BlurView
-                intensity={40}
-                tint="light"
-                style={StyleSheet.absoluteFill}
-              />
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  { backgroundColor: "rgba(255,255,255,0.4)" },
-                ]}
-              />
-              <LockIcon width={76} height={95} />
-              <Text style={styles.lockText}>
-                {nextDay.year}년 {nextDay.month}월 {nextDay.day}일에 현상이
-                완료돼요
-              </Text>
-            </Pressable>
-          )}
+        <View style={styles.photoGrid}>
+          {fourPhotos.map((photo, idx) => (
+            <View key={photo.id} style={styles.photoItem}>
+              <Pressable
+                onPress={() => {
+                  const rollItems: DetailMediaItem[] = item.photos.map(
+                    (p, i) => ({
+                      id: p.id,
+                      mediaKind: "PHOTO",
+                      url: p.url,
+                      comment: p.comment,
+                      date: dateLabel,
+                      dayLabel: `D${rollNum}-#${String(i + 1).padStart(2, "0")}`,
+                      lat: p.lat,
+                      lng: p.lng,
+                    }),
+                  );
+                  openDetail(rollItems, idx);
+                }}
+              >
+                <PhotoItem
+                  date={dateLabel}
+                  day={rollNum}
+                  num={idx + 1}
+                  location={formatCoordLabelDms(photo.lat, photo.lng)}
+                  image={photo.url}
+                />
+              </Pressable>
+            </View>
+          ))}
         </View>
       </View>
     );
@@ -193,7 +162,7 @@ export default function MemberAlbum() {
             @{memberName} 님의 앨범을 보고 있어요
           </Text>
           <Text style={styles.friendBannerSub}>
-            함께한 여행에서 친구가 남긴 네컷과 영상이에요
+            친구가 현상을 마친 네컷과 영상만 볼 수 있어요
           </Text>
         </View>
       </View>
@@ -214,14 +183,14 @@ export default function MemberAlbum() {
 
         {mediaData.length === 0 && !albumQuery.isLoading ? (
           <Text style={styles.emptyText}>
-            아직 친구가 남긴 기록이 없어요.
+            친구가 아직 현상한 기록이 없어요.
           </Text>
         ) : (
           <>
             <FlatList
               data={mediaData}
-              renderItem={renderDayPage}
-              keyExtractor={(item) => String(item.dayNumber)}
+              renderItem={renderRollPage}
+              keyExtractor={(item) => String(item.index)}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
@@ -244,55 +213,30 @@ export default function MemberAlbum() {
             </View>
 
             <View style={styles.videoGrid}>
-              {currentDay?.videos.map((video, idx) => {
-                const nextDay = getNextDay(currentDay.date);
+              {currentRoll?.videos.map((video, idx) => {
+                const rollLabel = rollDateLabel(currentRoll);
                 const onPress = () => {
-                  if (isTodayCurrentDay) {
-                    Alert.alert(
-                      "현상 미완료",
-                      `${nextDay.year}년 ${nextDay.month}월 ${nextDay.day}일에 현상이 완료돼요`,
-                    );
-                    return;
-                  }
-                  const dayItems: DetailMediaItem[] = currentDay.videos.map(
+                  const rollItems: DetailMediaItem[] = currentRoll.videos.map(
                     (v, i) => ({
                       id: v.id,
                       mediaKind: "VIDEO",
                       url: v.url,
                       comment: v.comment,
-                      date: currentDay.date,
-                      dayLabel: `D${currentDay.dayNumber}-V${String(
+                      date: rollLabel,
+                      dayLabel: `D${currentRoll.index}-V${String(
                         i + 1,
                       ).padStart(2, "0")}`,
                       lat: v.lat,
                       lng: v.lng,
                     }),
                   );
-                  openDetail(dayItems, idx);
+                  openDetail(rollItems, idx);
                 };
 
                 return (
                   <View key={video.id} style={styles.videoItem}>
                     <Pressable onPress={onPress}>
-                      <View style={styles.thumbWrap}>
-                        <VideoThumbItem videoUrl={video.url} />
-                        {isTodayCurrentDay && (
-                          <View style={styles.blurOverlay}>
-                            <BlurView
-                              intensity={40}
-                              tint="light"
-                              style={StyleSheet.absoluteFill}
-                            />
-                            <View
-                              style={[
-                                StyleSheet.absoluteFill,
-                                { backgroundColor: "rgba(255,255,255,0.35)" },
-                              ]}
-                            />
-                            <LockIcon width={50} height={69} />
-                          </View>
-                        )}
-                      </View>
+                      <VideoThumbItem videoUrl={video.url} />
                     </Pressable>
                   </View>
                 );
@@ -381,11 +325,6 @@ const styles = StyleSheet.create({
   dayPage: {
     width: SCREEN_WIDTH,
   },
-  blur: {
-    width: SCREEN_WIDTH,
-    backgroundColor: colors.CLOUD,
-    opacity: 0.9,
-  },
   photoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -395,35 +334,6 @@ const styles = StyleSheet.create({
   photoItem: {
     width: "50%",
     padding: 0,
-  },
-  gridWrapper: {
-    position: "relative",
-  },
-  lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lockText: {
-    fontFamily: "Orbit",
-    color: colors.CREAM,
-    backgroundColor: colors.INK,
-    marginTop: 23,
-    textAlign: "center",
-    lineHeight: 16,
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    fontSize: 14,
-    fontWeight: 400,
-  },
-  thumbWrap: {
-    position: "relative",
-  },
-  blurOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
   },
   videoGrid: {
     flexDirection: "row",
