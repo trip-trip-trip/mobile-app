@@ -20,13 +20,6 @@ import {
   View,
 } from "react-native";
 
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 export default function ScheduleScreen() {
   const { placeIds: placeIdsParam, cityNames: cityNamesParam } =
     useLocalSearchParams<{ placeIds?: string; cityNames?: string }>();
@@ -53,14 +46,10 @@ export default function ScheduleScreen() {
   const handleStart = () => {
     if (!tripTitle.trim() || isPending) return;
 
-    const today = new Date();
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + days - 1);
-
+    // 시작은 버튼을 누른 순간 — 날짜 계산은 서버(롤 시스템)가 담당한다
     createTrip({
       title: tripTitle.trim(),
-      startDate: formatDate(today),
-      endDate: formatDate(endDate),
+      totalDays: days,
       placeIds: placeIds.length > 0 ? placeIds : null,
     });
   };

@@ -1,19 +1,6 @@
-// 오늘 날짜 YYYY-MM-DD — 디바이스 로컬 시간 기준
-// (사진이 찍힌 날짜가 사용자의 실제 시간 감각과 일치해야 하므로 UTC가 아닌 로컬 기준 사용)
-export const getTodayYmd = () => {
-  const now = new Date();
-
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
-
-// 오늘 날짜 YYYY-MM-DD — UTC 기준
-export const getTodayUtcYmd = () => {
-  return new Date().toISOString().split("T")[0];
-};
+// 이 파일은 "표시 포맷터"만 담는다.
+// 날짜로 상태를 판정하는 함수(getTodayYmd, isCompletedTrip, getNextDay 등)는
+// 롤 시스템 도입으로 제거됨 — 판정은 전부 서버가 담당한다 (travel-day-roll-spec.md 9장).
 
 // 디바이스의 IANA 타임존 식별자 (예: "Asia/Seoul") — 실패 시 UTC
 export const getDeviceTimeZone = () => {
@@ -48,25 +35,6 @@ export const formatClockStamp = (date: Date, useUtc = false) => {
 
   const p = (n: number) => String(n).padStart(2, "0");
   return `${y}.${p(mo)}.${p(d)} ${p(h)}:${p(mi)}:${p(s)}`;
-};
-
-// 내일 날짜 년도, 달, 일
-export const getNextDay = (dateStr: string) => {
-  const [y, m, d] = dateStr.split("-").map(Number);
-
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() + 1);
-
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-
-  return { year, month, day };
-};
-
-// endDate가 today 이하이면 true (오늘 종료도 완료로 처리)
-export const isCompletedTrip = (endDate: string, todayYmd: string) => {
-  return endDate <= todayYmd;
 };
 
 const MONTHS = [

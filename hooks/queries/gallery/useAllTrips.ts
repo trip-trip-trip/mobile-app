@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getTrips } from "@/api/gallery";
 import { tripKeys } from "@/hooks/queries/gallery/tripKeys";
 import type { TripInfo, TripRaw } from "@/types/gallery";
-import { getTodayYmd, isCompletedTrip } from "@/utils/date";
 
 type GalleryTrips = {
   activeTrip: TripInfo | null;
@@ -24,20 +23,20 @@ const mapTripToTripInfo = (trip: TripRaw): TripInfo => {
     photos: trip.myPhotoUrls,
     coverImage: trip.myPhotoUrls.length > 0 ? trip.myPhotoUrls[0] : null,
     status: trip.status,
+    totalDays: trip.totalDays,
+    currentRoll: trip.currentRoll,
   };
 };
 
 const normalizeTripsForGallery = (items: TripRaw[]): GalleryTrips => {
-  const today = getTodayYmd();
-
   const completed: TripInfo[] = [];
   const active: TripInfo[] = [];
 
   items.forEach((trip) => {
     const info = mapTripToTripInfo(trip);
 
-    if (info.status === "COMPLETED" || info.endDate < today)
-      completed.push(info);
+    // 분류는 서버 status만 사용 — 날짜 비교 금지 (travel-day-roll-spec.md)
+    if (info.status === "ENDED") completed.push(info);
     else active.push(info);
   });
 

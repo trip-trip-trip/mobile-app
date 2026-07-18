@@ -7,10 +7,10 @@ export interface PlaceRes {
   parentId: number | null;
 }
 
+// 시작은 버튼을 누른 순간 — 날짜가 아니라 총 일수만 보낸다 (travel-day-roll-spec.md 4.1)
 export interface TripCreateReq {
   title: string;
-  startDate: string; // "YYYY-MM-DD"
-  endDate: string; // "YYYY-MM-DD"
+  totalDays: number;
   placeIds: number[] | null;
 }
 
@@ -19,12 +19,14 @@ export interface TripRes {
   ownerId: number;
   title: string;
   visibility: "PRIVATE" | "FRIENDS";
-  status: "ACTIVE" | "UPCOMING" | "COMPLETED";
-  startDate: string;
-  endDate: string;
+  status: "ACTIVE" | "ENDED";
+  startDate: string; // 표시 라벨 전용
+  endDate: string | null; // 표시 라벨 전용
   places: string[];
   participantNames: string[] | null;
   participantAvatarUrls: string[] | null;
+  totalDays: number | null;
+  currentRoll: number | null;
 }
 
 export interface ActiveTripCheckRes {
@@ -34,7 +36,5 @@ export interface ActiveTripCheckRes {
 
 export type TripUpdateReq = {
   title?: string;
-  startDate?: string;
-  endDate?: string;
   placeIds?: number[];
 };
