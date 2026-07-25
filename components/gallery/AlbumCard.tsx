@@ -11,6 +11,8 @@ type AlbumCardProps = {
 
 export const AlbumCard = ({ data }: AlbumCardProps) => {
   const coverUri = data.coverImage ?? data.photos[0] ?? "";
+  // 서버가 현상된 사진만 내려주므로, 찍은 사진은 있는데 보여줄 게 없으면 "현상 전" 상태
+  const isUndeveloped = !coverUri && data.photoCount > 0;
 
   return (
     <View style={styles.card}>
@@ -40,12 +42,22 @@ export const AlbumCard = ({ data }: AlbumCardProps) => {
           ) : (
             <View style={styles.coverPlaceholder}>
               <Feather
-                name={data.videoCount > 0 ? "film" : "camera"}
+                name={
+                  isUndeveloped
+                    ? "lock"
+                    : data.videoCount > 0
+                      ? "film"
+                      : "camera"
+                }
                 size={36}
                 color={colors.NAVY}
               />
               <Text style={styles.coverPlaceholderText}>
-                {data.videoCount > 0 ? "VIDEO ONLY" : "NO SHOTS"}
+                {isUndeveloped
+                  ? "NOT DEVELOPED"
+                  : data.videoCount > 0
+                    ? "VIDEO ONLY"
+                    : "NO SHOTS"}
               </Text>
             </View>
           )}
