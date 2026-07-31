@@ -23,6 +23,7 @@ import {
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -455,6 +456,10 @@ export default function Album() {
                       num={idx + 1}
                       location={formatCoordLabelDms(photo.lat, photo.lng)}
                       image={photo.url}
+                      // 안드로이드: BlurView가 틴트만 그려 미현상 사진이 노출됨 → 비트맵 블러
+                      blurRadius={
+                        isLocked && Platform.OS === "android" ? 25 : undefined
+                      }
                     />
                   </Pressable>
                 </View>
@@ -693,7 +698,12 @@ export default function Album() {
               <View key={video.id} style={styles.videoItem}>
                 <Pressable onPress={onPress}>
                   <View style={styles.thumbWrap}>
-                    <VideoThumbItem videoUrl={video.url} />
+                    <VideoThumbItem
+                      videoUrl={video.url}
+                      blurRadius={
+                        rollLocked && Platform.OS === "android" ? 25 : undefined
+                      }
+                    />
                     {rollLocked && (
                       <View style={styles.blurOverlay}>
                         <BlurView
