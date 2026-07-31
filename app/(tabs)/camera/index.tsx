@@ -12,12 +12,14 @@ import {
   useMicrophonePermissions,
 } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  BackHandler,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -37,6 +39,7 @@ import VideoButton from "@/assets/icons/videoButton.svg";
 import VideoLines from "@/assets/icons/VideoLines.svg";
 import WhitePanel from "@/assets/icons/whitepanel.svg";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 
 // API 임포트
 import { getTripAlbumDetail } from "@/api/album";
@@ -58,10 +61,20 @@ const CameraScreen = () => {
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
-  const [capturedLocation, setCapturedLocation] = useState<{
+  // 위치는 미리보기 전환을 막지 않도록 백그라운드로 획득하고 저장 시점에 합류한다.
+  // (기존에 촬영과 위치를 Promise.all로 묶어, 갤럭시 실내 GPS fix 시간(3~20초)만큼
+  // 미리보기 전환이 지연되던 문제의 원인)
+  const locationPromiseRef = useRef<Promise<{
     lat: number;
     lng: number;
-  } | null>(null);
+  } | null> | null>(null);
+  // 업로드 축소 판단용 원본 치수 (사진 모드에서만 기록)
+  const capturedSizeRef = useRef<{ width: number; height: number } | null>(
+    null
+  );
+  // 세션 중 마지막으로 성공한 좌표 — 신선한 fix가 늦을 때의 폴백
+  const lastGoodCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const isFocused = useIsFocused();
   const [isBlurDetected, setIsBlurDetected] = useState(false);
 
   const { tripId } = useLocalSearchParams<{ tripId?: string }>();
@@ -113,6 +126,10 @@ const CameraScreen = () => {
       if (targetTripId) {
         void refetchTripDetail();
       }
+      // GPS fix를 미리 시작 — 첫 촬영의 지오태그가 저장 시한(2.5초) 안에 잡히도록
+      void acquireCoords();
+      return () => setIsCameraReady(false); // 블러 후 재마운트 대비
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refetchTripStatus, refetchTripDetail, targetTripId])
   );
 
@@ -159,8 +176,44 @@ const CameraScreen = () => {
     });
   };
 
+  const coordsOf = (position: Location.LocationObject) => {
+    const { latitude, longitude } = position.coords;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    return { lat: latitude, lng: longitude };
+  };
+
+  // 신선한 위치 fix를 요청하고, 성공하면 세션 폴백(lastGoodCoordsRef)에도 반영.
+  // OS 캐시는 최근 1분 내의 것만 폴백 시드로 사용 — 무제한 스테일 캐시를 쓰면
+  // 도시를 이동한 뒤에도 이전 도시 좌표가 지오태그로 붙을 수 있다.
+  const acquireCoords = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return null;
+
+      if (!lastGoodCoordsRef.current) {
+        try {
+          const cached = await Location.getLastKnownPositionAsync({
+            maxAge: 60_000,
+          });
+          if (cached) lastGoodCoordsRef.current = coordsOf(cached);
+        } catch {}
+      }
+
+      const fresh = coordsOf(
+        await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        })
+      );
+      if (fresh) lastGoodCoordsRef.current = fresh;
+      return fresh;
+    } catch (error) {
+      console.error("Location capture error:", error);
+      return null;
+    }
+  };
+
   const handleShutterPress = async () => {
-    if (!cameraRef.current || !isCameraReady) return;
+    if (!cameraRef.current || !isCameraReady || isUploading) return;
 
     if (mode === "photo" && isLimitReached) {
       Alert.alert(
@@ -170,37 +223,18 @@ const CameraScreen = () => {
       return;
     }
 
-    const getCurrentCoordinates = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") return null;
-
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-
-        const { latitude, longitude } = position.coords;
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
-          return null;
-
-        return { lat: latitude, lng: longitude };
-      } catch (error) {
-        console.error("Location capture error:", error);
-        return null;
-      }
-    };
-
     if (mode === "photo") {
       try {
+        locationPromiseRef.current = acquireCoords();
         const shakePromise = measureShakeWindow();
-        const [photo, location] = await Promise.all([
-          cameraRef.current.takePictureAsync(),
-          getCurrentCoordinates(),
-        ]);
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8, // 갤럭시 원본(수 MB~십수 MB) 그대로 올리면 업로드가 수 배 느림
+          shutterSound: false, // 시스템 셔터음이 과도하게 큼 (QA)
+        });
         const shakeScore = await shakePromise;
         setIsBlurDetected(shakeScore > 0.25);
+        capturedSizeRef.current = { width: photo.width, height: photo.height };
         setCapturedUri(photo.uri);
-        setCapturedLocation(location);
       } catch (error) {
         console.error("Photo capture error:", error);
       }
@@ -208,10 +242,9 @@ const CameraScreen = () => {
       if (isRecording) return;
       try {
         setIsRecording(true);
+        locationPromiseRef.current = acquireCoords();
         const video = await cameraRef.current.recordAsync({ maxDuration: 3 });
-        const location = await getCurrentCoordinates();
         if (video?.uri) setCapturedUri(video.uri);
-        setCapturedLocation(location);
       } catch (error) {
         console.error("Video recording error:", error);
       } finally {
@@ -230,13 +263,43 @@ const CameraScreen = () => {
         return;
       }
 
+      // 위치가 아직 안 잡혔으면 잠깐만 기다리고, 세션의 마지막 좌표로 폴백 — 저장을 막지 않는다
+      const location =
+        (await Promise.race([
+          locationPromiseRef.current ?? Promise.resolve(null),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+        ])) ?? lastGoodCoordsRef.current;
+
+      // 업로드 전 긴 변 2048px로 축소 — 원본 해상도 그대로면 업로드·서버 처리가 수 배 느림
+      let uploadUri = capturedUri;
+      const size = capturedSizeRef.current;
+      if (mode === "photo" && size && Math.max(size.width, size.height) > 2048) {
+        try {
+          const resized = await ImageManipulator.manipulateAsync(
+            capturedUri,
+            [
+              {
+                resize:
+                  size.height > size.width
+                    ? { height: 2048 }
+                    : { width: 2048 },
+              },
+            ],
+            { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          uploadUri = resized.uri;
+        } catch {
+          // 축소 실패 시 원본 업로드
+        }
+      }
+
       await uploadMedia(
         mode,
         targetTripId,
-        capturedUri,
+        uploadUri,
         comment,
-        capturedLocation?.lat ?? null,
-        capturedLocation?.lng ?? null
+        location?.lat ?? null,
+        location?.lng ?? null
       );
 
       // 저장 성공 시 알림
@@ -251,7 +314,8 @@ const CameraScreen = () => {
             // 초기화 후 갤러리로 이동
             setCapturedUri(null);
             setComment("");
-            setCapturedLocation(null);
+            locationPromiseRef.current = null;
+            capturedSizeRef.current = null;
             setIsBlurDetected(false);
             router.push("/(tabs)/gallery");
           },
@@ -269,13 +333,33 @@ const CameraScreen = () => {
     }
   };
 
-  // 다시 촬영하기 로직
+  // 다시 촬영하기 로직 (업로드 진행 중에는 무시 — 취소된 줄 알았는데 쿼터가 소모되는 것 방지)
   const handleRetake = () => {
+    if (isUploading) return;
     setCapturedUri(null);
     setComment("");
-    setCapturedLocation(null);
+    locationPromiseRef.current = null;
+    capturedSizeRef.current = null;
     setIsBlurDetected(false);
   };
+
+  // 안드로이드 시스템 뒤로가기: 미리보기 중이면 다시 찍기, 아니면 메인(갤러리)으로.
+  // 기본 동작(히스토리 pop)은 여행 만들기 잔류 스택(지역/일정 화면)으로 떨어진다 (QA)
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (isUploading) return true; // 저장 중에는 이탈 금지
+        if (capturedUri) {
+          handleRetake();
+        } else {
+          router.replace("/(tabs)/gallery");
+        }
+        return true;
+      });
+      return () => sub.remove();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [capturedUri, isUploading])
+  );
 
   return (
     <KeyboardAvoidingView
@@ -322,14 +406,16 @@ const CameraScreen = () => {
           </View>
         ) : (
           <>
-            <CameraView
-              ref={cameraRef}
-              style={styles.camera}
-              facing={facing}
-              mirror={facing === "front"}
-              mode={mode === "photo" ? "picture" : "video"}
-              onCameraReady={() => setIsCameraReady(true)}
-            />
+            {isFocused && (
+              <CameraView
+                ref={cameraRef}
+                style={styles.camera}
+                facing={facing}
+                mirror={facing === "front"}
+                mode={mode === "photo" ? "picture" : "video"}
+                onCameraReady={() => setIsCameraReady(true)}
+              />
+            )}
             {/* ShotIndicator에도 현재 번호 연동 가능 */}
             <ShotIndicator current={currentPicIndex} />
             {/* 필름 날짜 각인 스타일 실시간 시계 (로컬 + UTC) */}
