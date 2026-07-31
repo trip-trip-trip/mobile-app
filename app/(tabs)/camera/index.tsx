@@ -383,7 +383,13 @@ const CameraScreen = () => {
       <View style={styles.cameraContainer}>
         {capturedUri ? (
           <View style={styles.resultWrapper}>
-            <Image source={{ uri: capturedUri }} style={styles.resultImage} />
+            <Image
+              source={{ uri: capturedUri }}
+              style={styles.resultImage}
+              // 안드로이드: BlurView가 틴트만 그려 방금 찍은 사진이 노출됨 →
+              // 비트맵 블러로 "현상 전까지 볼 수 없다" 컨셉 유지 (iOS는 BlurView가 담당)
+              blurRadius={Platform.OS === "android" ? 25 : undefined}
+            />
             <BlurView
               intensity={80}
               tint="dark"

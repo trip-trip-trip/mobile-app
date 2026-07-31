@@ -7,6 +7,9 @@ type PhotoItemProps = {
   date: string;
   num: number;
   day: number;
+  // 미현상 잠금용 비트맵 블러 — 안드로이드는 expo-blur BlurView가 실제 블러를
+  // 렌더링하지 않아(반투명 틴트만) 이미지 자체에 네이티브 블러를 건다
+  blurRadius?: number;
 };
 
 export const PhotoItem = ({
@@ -15,6 +18,7 @@ export const PhotoItem = ({
   date,
   num,
   day,
+  blurRadius,
 }: PhotoItemProps) => {
   return (
     <View style={styles.photoItem}>
@@ -23,6 +27,7 @@ export const PhotoItem = ({
           uri: image,
         }}
         style={styles.image}
+        blurRadius={blurRadius}
       />
       <Text style={styles.imageLocation}>{location}</Text>
       <View style={styles.imageFooter}>

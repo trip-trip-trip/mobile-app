@@ -4,9 +4,11 @@ import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   videoUrl: string | null;
+  // 미현상 잠금용 비트맵 블러 (PhotoItem과 동일한 이유 — 안드로이드 BlurView 미동작)
+  blurRadius?: number;
 };
 
-export function VideoThumbItem({ videoUrl }: Props) {
+export function VideoThumbItem({ videoUrl, blurRadius }: Props) {
   const { thumbUri, status } = useVideoThumbnail(videoUrl, {
     timeoutMs: 12_000,
   });
@@ -14,7 +16,11 @@ export function VideoThumbItem({ videoUrl }: Props) {
   return (
     <View style={styles.tile}>
       {status === "ready" && thumbUri ? (
-        <Image source={{ uri: thumbUri }} style={StyleSheet.absoluteFill} />
+        <Image
+          source={{ uri: thumbUri }}
+          style={StyleSheet.absoluteFill}
+          blurRadius={blurRadius}
+        />
       ) : status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator />
