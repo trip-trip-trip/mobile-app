@@ -126,8 +126,15 @@ const CameraScreen = () => {
       if (targetTripId) {
         void refetchTripDetail();
       }
-      // GPS fix를 미리 시작 — 첫 촬영의 지오태그가 저장 시한(2.5초) 안에 잡히도록
-      void acquireCoords();
+      // GPS fix를 미리 시작 — 첫 촬영의 지오태그가 저장 시한(2.5초) 안에 잡히도록.
+      // 단, 위치 권한이 이미 있을 때만 (워밍업이 권한 다이얼로그를 띄우면
+      // 카메라 화면이 백그라운드로 마운트되는 경로에서 엉뚱한 시점에 팝업이 뜬다.
+      // 권한 요청 자체는 셔터를 누르는 자연스러운 시점에 acquireCoords가 수행)
+      void Location.getForegroundPermissionsAsync()
+        .then(({ granted }) => {
+          if (granted) void acquireCoords();
+        })
+        .catch(() => {});
       return () => setIsCameraReady(false); // 블러 후 재마운트 대비
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refetchTripStatus, refetchTripDetail, targetTripId])
@@ -142,10 +149,6 @@ const CameraScreen = () => {
     if (!micPermission) return;
     if (!micPermission.granted) requestMicPermission();
   }, [micPermission, requestMicPermission]);
-
-  if (!permission?.granted) {
-    return <View style={{ flex: 1, backgroundColor: "black" }} />;
-  }
 
   const measureShakeWindow = async (): Promise<number> => {
     return new Promise((resolve) => {
@@ -360,6 +363,14 @@ const CameraScreen = () => {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [capturedUri, isUploading])
   );
+
+  // 권한 게이트는 반드시 모든 훅·함수 정의 뒤에 있어야 한다.
+  // 훅 등록 후 이 지점 위에서 early return하면, 위쪽 focus effect가
+  // 아직 초기화되지 않은 아래쪽 함수(acquireCoords 등)를 호출해
+  // "undefined is not a function"으로 앱이 죽는다 (2026-07-31 갤럭시 실사고).
+  if (!permission?.granted) {
+    return <View style={{ flex: 1, backgroundColor: "black" }} />;
+  }
 
   return (
     <KeyboardAvoidingView
