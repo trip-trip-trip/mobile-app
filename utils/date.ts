@@ -1,9 +1,18 @@
 // 이 파일은 "표시 포맷터"만 담는다.
 // 날짜로 상태를 판정하는 함수(getTodayYmd, isCompletedTrip, getNextDay 등)는
 // 롤 시스템 도입으로 제거됨 — 판정은 전부 서버가 담당한다 (travel-day-roll-spec.md 9장).
+import { getCalendars } from "expo-localization";
 
 // 디바이스의 IANA 타임존 식별자 (예: "Asia/Seoul") — 실패 시 UTC
+// 네이티브(expo-localization) 값을 우선한다: Hermes의 Intl은 RN 0.76+에서
+// 타임존을 캐시해 기기 시간대가 바뀌어도 재시작 전까지 이전 값을 반환한다
+// (시간대를 넘나드는 여행 앱에 치명적). Intl은 폴백으로만 사용.
+// 서버는 리터럴 "UTC" 보고를 미상으로 취급한다 (backend TzPolicy).
 export const getDeviceTimeZone = () => {
+  try {
+    const native = getCalendars()[0]?.timeZone;
+    if (native) return native;
+  } catch {}
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   } catch {
