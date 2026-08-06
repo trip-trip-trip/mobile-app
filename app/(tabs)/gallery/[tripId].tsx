@@ -36,6 +36,8 @@ import ViewShot from "react-native-view-shot";
 
 import PhotoDetailModal from "@/components/gallery/PhotoDetailModal";
 import { VideoThumbItem } from "@/components/gallery/VideoThumbItem";
+import TutorialOverlay from "@/components/tutorial/TutorialOverlay";
+import { useCoachMarks } from "@/hooks/useCoachMarks";
 import { useDevelopRoll } from "@/hooks/queries/gallery/useDevelopRoll";
 import { useTripAlbumQuery } from "@/hooks/queries/gallery/useTripDetail";
 import type { DetailMediaItem, RollMedia, TripRoll } from "@/types/gallery";
@@ -50,6 +52,12 @@ import { tripKeys } from "@/hooks/queries/gallery/tripKeys";
 import { albumKeys } from "@/hooks/queries/gallery/albumKeys";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// 세부페이지 첫 진입 튜토리얼
+const DETAIL_TUTORIAL_STEPS = [
+  { key: "invite", text: "친구 초대하기를 눌러 친구와 앨범을 공유할 수 있어요" },
+  { key: "members", text: "멤버 보기를 눌러 친구의 앨범을 볼 수 있어요" },
+];
 
 export default function Album() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -71,8 +79,14 @@ export default function Album() {
   const [isEndingTrip, setIsEndingTrip] = useState(false);
 
   const shotRefs = useRef<Record<number, any>>({});
+  const rollListRef = useRef<FlatList<TripRoll>>(null);
+  const initialRollHandledRef = useRef(false);
 
-  const params = useLocalSearchParams<{ tripId?: string; status?: string }>();
+  const params = useLocalSearchParams<{
+    tripId?: string;
+    status?: string;
+    initialRoll?: string; // 현상 안내에서 진입 시 첫 미현상 롤로 스크롤
+  }>();
 
   const tripId = useMemo(() => {
     const raw = params.tripId;
@@ -86,7 +100,9 @@ export default function Album() {
   const deleteTrip = useDeleteTrip();
 
   const album = albumQuery.data?.result;
-  const mediaData = album?.rolls ?? [];
+  const rolls = album?.rolls;
+  // 매 렌더마다 새 배열이 되지 않도록 고정 — initialRoll 스크롤 effect의 의존성
+  const mediaData = useMemo(() => rolls ?? [], [rolls]);
 
   const albumTitleData = useMemo(
     () => ({
@@ -131,6 +147,31 @@ export default function Album() {
       setActiveIndex(mediaData.length - 1);
     }
   }, [mediaData.length, activeIndex]);
+
+  // 현상 안내 모달에서 진입한 경우 첫 미현상 롤 페이지로 이동
+  useEffect(() => {
+    if (initialRollHandledRef.current) return;
+    const targetRollNum = Number(params.initialRoll);
+    if (!Number.isFinite(targetRollNum) || targetRollNum <= 0) return;
+    if (mediaData.length === 0) return;
+
+    const listIndex = mediaData.findIndex((r) => r.index === targetRollNum);
+    if (listIndex < 0) return;
+
+    initialRollHandledRef.current = true;
+    setActiveIndex(listIndex);
+    // 첫 렌더 직후에는 리스트 레이아웃이 안 끝났을 수 있어 다음 틱에 스크롤
+    setTimeout(() => {
+      rollListRef.current?.scrollToIndex({ index: listIndex, animated: false });
+    }, 0);
+  }, [mediaData, params.initialRoll]);
+
+  // 첫 진입 튜토리얼 (친구 초대 / 멤버 보기)
+  const detailTutorial = useCoachMarks(
+    "tutorial_trip_detail",
+    DETAIL_TUTORIAL_STEPS,
+    Boolean(album),
+  );
 
   const handleDevelop = (rollIndex: number) => {
     if (developMutation.isPending) return;
@@ -518,6 +559,8 @@ export default function Album() {
         <AlbumTitle
           data={albumTitleData}
           isTraveling={canEndTrip}
+          membersRef={detailTutorial.targetRef("members")}
+          inviteRef={detailTutorial.targetRef("invite")}
           onPressMembers={() =>
             router.push({
               pathname: "/(tabs)/gallery/members" as any,
@@ -564,6 +607,7 @@ export default function Album() {
         <View style={styles.sectionSeparator} />
 
         <FlatList
+          ref={rollListRef}
           data={mediaData}
           renderItem={renderRollPage}
           keyExtractor={(item) => String(item.index)}
@@ -572,6 +616,11 @@ export default function Album() {
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
         />
 
         <View style={styles.indicatorContainer}>
@@ -772,6 +821,13 @@ export default function Album() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* 첫 진입 튜토리얼 */}
+      <TutorialOverlay
+        visible={detailTutorial.visible}
+        steps={detailTutorial.steps}
+        onFinish={detailTutorial.finish}
+      />
 
       {/* 사진/영상 세부 페이지 */}
       <PhotoDetailModal

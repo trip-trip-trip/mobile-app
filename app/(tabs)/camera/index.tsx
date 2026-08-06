@@ -591,9 +591,10 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
+  // 문구가 사진을 가리지 않도록 미리보기 하단에 배치 (QA: 아래로 내리기)
   resultTextWrapper: {
     position: "absolute",
-    bottom: 80,
+    bottom: 24,
     alignSelf: "center",
     alignItems: "center",
   },

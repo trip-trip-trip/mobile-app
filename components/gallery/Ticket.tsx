@@ -8,9 +8,11 @@ import { TicketLabel } from "./TicketLabel";
 
 type TicketProps = {
   data: TripInfo;
+  // 튜토리얼 코치마크가 촬영하기 버튼 위치를 측정할 수 있도록 노출
+  shootButtonRef?: (node: View | null) => void;
 };
 
-export const Ticket = ({ data }: TicketProps) => {
+export const Ticket = ({ data, shootButtonRef }: TicketProps) => {
   // 총 일수는 서버의 totalDays 사용 — 날짜 diff 계산 금지
   const totalDays = data.totalDays ?? 1;
 
@@ -83,6 +85,7 @@ export const Ticket = ({ data }: TicketProps) => {
 
       {/* 촬영하기 버튼 */}
       <Pressable
+        ref={shootButtonRef}
         onPress={() =>
           router.push({
             pathname: "/(tabs)/camera",

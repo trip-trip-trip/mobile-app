@@ -20,12 +20,17 @@ type AlbumDataProps = {
   data: AlbumData;
   isTraveling: boolean;
   onPressMembers?: () => void; // 멤버 아바타 눌러 참여자 목록으로 이동
+  // 튜토리얼 코치마크 위치 측정용 ref
+  membersRef?: (node: View | null) => void;
+  inviteRef?: (node: View | null) => void;
 };
 
 export const AlbumTitle = ({
   data,
   isTraveling,
   onPressMembers,
+  membersRef,
+  inviteRef,
 }: AlbumDataProps) => {
   return (
     <View style={styles.topSection}>
@@ -36,28 +41,34 @@ export const AlbumTitle = ({
       )}
       <Title>{data.title}</Title>
       <View style={styles.infoRow}>
-        <TouchableOpacity
-          onPress={onPressMembers}
-          disabled={!onPressMembers}
-          style={styles.membersButton}
-        >
-          <SharedProfiles data={data.memberProfileUrls} size={25} />
-          {onPressMembers && <Text style={styles.membersText}>멤버 보기</Text>}
-        </TouchableOpacity>
-        {isTraveling && (
-          <TouchableOpacity>
-            <Text
-              style={styles.inviteText}
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/invite",
-                  params: { tripId: data.id },
-                })
-              }
-            >
-              친구 초대하기
-            </Text>
+        <View ref={membersRef} collapsable={false}>
+          <TouchableOpacity
+            onPress={onPressMembers}
+            disabled={!onPressMembers}
+            style={styles.membersButton}
+          >
+            <SharedProfiles data={data.memberProfileUrls} size={25} />
+            {onPressMembers && (
+              <Text style={styles.membersText}>멤버 보기</Text>
+            )}
           </TouchableOpacity>
+        </View>
+        {isTraveling && (
+          <View ref={inviteRef} collapsable={false}>
+            <TouchableOpacity>
+              <Text
+                style={styles.inviteText}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/invite",
+                    params: { tripId: data.id },
+                  })
+                }
+              >
+                친구 초대하기
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
       <Text style={styles.locationDateText}>

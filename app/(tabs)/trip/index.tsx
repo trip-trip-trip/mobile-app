@@ -6,9 +6,11 @@ import {
   SectionList,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { router } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 
 import CityItem from "@/components/CityItem";
 import FilterTab from "@/components/FilterTab";
@@ -49,6 +51,7 @@ export default function TripsIndex() {
   const [mainTab, setMainTab] = useState<"국내" | "해외">("해외");
   const [subFilter, setSubFilter] = useState("전체");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const insets = useSafeAreaInsets();
 
@@ -149,6 +152,54 @@ export default function TripsIndex() {
     childrenOf,
   ]);
 
+  // 검색 — 국내/해외 구분 없이 전체 도시에서 이름·하위 명소로 검색
+  const searchSections: Section[] = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+
+    const matches = (item: CityDisplayItem) =>
+      item.name.toLowerCase().includes(q) ||
+      item.description.toLowerCase().includes(q);
+
+    const result: Section[] = [];
+
+    for (const province of domesticFilterTabs) {
+      const cities = getCityDescendants(province.id, childrenOf).filter(
+        matches,
+      );
+      if (cities.length > 0) {
+        result.push({ title: `국내 · ${province.name}`, data: cities });
+      }
+    }
+
+    for (const country of internationalFilterTabs) {
+      const regions = childrenOf.get(country.id) ?? [];
+      for (const region of regions) {
+        const cities = (childrenOf.get(region.id) ?? [])
+          .filter((c) => c.type === "CITY")
+          .map((city) => {
+            const spots = childrenOf.get(city.id) ?? [];
+            return {
+              ...city,
+              description: spots.map((s) => s.name).join(", "),
+            };
+          })
+          .filter(matches);
+        if (cities.length > 0) {
+          result.push({
+            title: `${country.name} · ${region.name}`,
+            data: cities,
+          });
+        }
+      }
+    }
+
+    return result;
+  }, [searchQuery, domesticFilterTabs, internationalFilterTabs, childrenOf]);
+
+  const isSearching = searchQuery.trim().length > 0;
+  const displaySections = isSearching ? searchSections : sections;
+
   const currentFilterTabs =
     mainTab === "국내" ? domesticFilterTabs : internationalFilterTabs;
 
@@ -210,58 +261,89 @@ export default function TripsIndex() {
         <Text style={styles.subText}>여행 장소를 모두 선택해주세요.</Text>
       </View>
 
-      {/* 국내 / 해외 메인 탭 */}
-      <View style={styles.mainTabContainer}>
-        {(["국내", "해외"] as const).map((tab) => (
-          <Pressable
-            key={tab}
-            style={[styles.mainTab, mainTab === tab && styles.activeMainTab]}
-            onPress={() => handleMainTabChange(tab)}
-          >
-            <Text
-              style={[
-                styles.mainTabText,
-                mainTab === tab && styles.activeMainTabText,
-              ]}
-            >
-              {tab}
-            </Text>
-          </Pressable>
-        ))}
+      {/* 여행 장소 검색창 */}
+      <View style={styles.searchWrapper}>
+        <View style={styles.searchBox}>
+          <Feather name="search" size={16} color={colors.NAVY} />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="여행 장소를 검색해보세요"
+            placeholderTextColor={colors.NAVY + "80"}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+          {isSearching && (
+            <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
+              <Feather name="x" size={16} color={colors.NAVY} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
-      {/* 하위 필터 탭 (가로 스크롤) */}
-      <View style={styles.filterScrollWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterContainer}
-        >
-          <FilterTab
-            label="전체"
-            isSelected={subFilter === "전체"}
-            onPress={() => setSubFilter("전체")}
-          />
-          {currentFilterTabs.map((tab) => (
-            <FilterTab
-              key={tab.id}
-              label={tab.name}
-              isSelected={subFilter === tab.name}
-              onPress={() => setSubFilter(tab.name)}
-            />
-          ))}
-        </ScrollView>
-      </View>
+      {/* 검색 중에는 탭/필터 대신 전체 검색 결과 표시 */}
+      {!isSearching && (
+        <>
+          {/* 국내 / 해외 메인 탭 */}
+          <View style={styles.mainTabContainer}>
+            {(["국내", "해외"] as const).map((tab) => (
+              <Pressable
+                key={tab}
+                style={[
+                  styles.mainTab,
+                  mainTab === tab && styles.activeMainTab,
+                ]}
+                onPress={() => handleMainTabChange(tab)}
+              >
+                <Text
+                  style={[
+                    styles.mainTabText,
+                    mainTab === tab && styles.activeMainTabText,
+                  ]}
+                >
+                  {tab}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* 하위 필터 탭 (가로 스크롤) */}
+          <View style={styles.filterScrollWrapper}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterContainer}
+            >
+              <FilterTab
+                label="전체"
+                isSelected={subFilter === "전체"}
+                onPress={() => setSubFilter("전체")}
+              />
+              {currentFilterTabs.map((tab) => (
+                <FilterTab
+                  key={tab.id}
+                  label={tab.name}
+                  isSelected={subFilter === tab.name}
+                  onPress={() => setSubFilter(tab.name)}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        </>
+      )}
 
       {/* 장소 목록 */}
-      {sections.length === 0 ? (
+      {displaySections.length === 0 ? (
         <View style={[styles.list, styles.centered]}>
-          <Text style={styles.emptyText}>등록된 장소가 없습니다.</Text>
+          <Text style={styles.emptyText}>
+            {isSearching ? "검색 결과가 없습니다." : "등록된 장소가 없습니다."}
+          </Text>
         </View>
       ) : (
         <SectionList
           style={styles.list}
-          sections={sections}
+          sections={displaySections}
           keyExtractor={(item) => item.id.toString()}
           stickySectionHeadersEnabled={false}
           automaticallyAdjustContentInsets={false}
@@ -321,6 +403,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.INK,
     fontFamily: "MonoplexKR-Regular",
+  },
+  searchWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.NAVY,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 8,
+    fontSize: 14,
+    fontFamily: "MonoplexKR-Regular",
+    color: colors.INK,
   },
   mainTabContainer: {
     flexDirection: "row",
